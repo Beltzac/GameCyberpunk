@@ -19,15 +19,33 @@ export class AssetLoader {
         }
 
         return new Promise((resolve, reject) => {
+            // Handle paths that may or may not already include 'assets/'
+            const cleanPath = url.startsWith('assets/') ? url : `assets/${url}`;
+            console.log(`AssetLoader: Loading texture from resolved path: ${cleanPath}`);
             this.textureLoader.load(
-                url,
+                cleanPath,
                 (texture) => {
+                    console.log(`AssetLoader: Successfully loaded texture from ${cleanPath}`);
                     this.textureCache.set(url, texture);
                     resolve(texture);
                 },
                 undefined,
-                (error) => {
-                    reject(new Error(`Failed to load texture from ${url}: ${error}`));
+                (error: unknown) => {
+                    console.error(`AssetLoader: Error loading texture from ${cleanPath}:`, error);
+                    let errorMessage = 'Unknown error';
+                    if (error instanceof Error) {
+                        errorMessage = error.message;
+                    } else if (error && typeof error === 'object' && 'type' in error) {
+                        errorMessage = 'Network or file loading error';
+                    } else {
+                        errorMessage = String(error);
+                    }
+                    console.error(`AssetLoader: Full error details for ${cleanPath}:`, {
+                        errorType: typeof error,
+                        errorObject: error,
+                        stack: error instanceof Error ? error.stack : undefined
+                    });
+                    reject(new Error(`Failed to load texture from ${cleanPath}: ${errorMessage}`));
                 }
             );
         });

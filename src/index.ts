@@ -39,7 +39,7 @@ gameEngine.sceneManager.addScene('cena1_trabalho', cena1TrabalhoScene);
 gameEngine.sceneManager.addScene('cena2_rua', cena2RuaScene);
 
 // 5. Set the Initial Scene
-gameEngine.sceneManager.setScene('joao'); // Start with Joao's scene
+gameEngine.sceneManager.setScene('cena1_trabalho'); // Start with work scene
 
 // 6. Start the Game Engine's Main Loop
 gameEngine.start();

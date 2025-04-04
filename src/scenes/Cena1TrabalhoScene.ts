@@ -18,13 +18,30 @@ export class Cena1TrabalhoScene extends Scene {
     }
 
     async init(): Promise<void> {
+        try{
         console.log("Cena1TrabalhoScene initializing...");
 
         // Load all required assets
-        try {
-            const backgroundTexture = await this.assetLoader.loadTexture('assets/cena_1_trabalho/background.png');
-            this.notebookOpenTexture = await this.assetLoader.loadTexture('assets/cena_1_trabalho/notebook_aberto.png');
-            this.notebookClosedTexture = await this.assetLoader.loadTexture('assets/cena_1_trabalho/notebook_fechado.png');
+        console.log('Loading background texture...');
+        const backgroundTexture = await this.assetLoader.loadTexture('cena_1_trabalho/background.png')
+            .catch(error => {
+                console.error('Failed to load background texture:', error);
+                throw error;
+            });
+
+        console.log('Loading notebook open texture...');
+        this.notebookOpenTexture = await this.assetLoader.loadTexture('cena_1_trabalho/notebook_aberto.png')
+            .catch(error => {
+                console.error('Failed to load notebook open texture:', error);
+                throw error;
+            });
+
+        console.log('Loading notebook closed texture...');
+        this.notebookClosedTexture = await this.assetLoader.loadTexture('cena_1_trabalho/notebook_fechado.png')
+            .catch(error => {
+                console.error('Failed to load notebook closed texture:', error);
+                throw error;
+            });
 
             // Create background sprite (full screen)
             const backgroundMaterial = new THREE.SpriteMaterial({ map: backgroundTexture });
