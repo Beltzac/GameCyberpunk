@@ -1,18 +1,41 @@
 // src/core/SceneManager.ts
+import * as THREE from 'three';
 import { Scene } from './Scene';
-import { GameState } from './GameState'; // Import GameState if needed for scene transitions
+import { GameState } from './GameState';
 
 export class SceneManager {
     private scenes: Map<string, Scene>;
     private _currentScene: Scene | null;
-    private gameState: GameState; // Optional: Pass GameState for context
+    private gameState: GameState;
     private sceneChangeListeners: Array<(scene: Scene | null) => void> = [];
+    private fadeOverlay: THREE.Mesh | null = null;
+    private renderer: THREE.WebGLRenderer | null = null;
+    private isTransitioning: boolean = false;
 
-    constructor(gameState: GameState) { // Pass GameState if needed
+    constructor(gameState: GameState) {
         this.scenes = new Map<string, Scene>();
         this._currentScene = null;
-        this.gameState = gameState; // Store GameState
+        this.gameState = gameState;
+        this.isTransitioning = false;
         console.log("SceneManager initialized");
+    }
+
+    public setRenderer(renderer: THREE.WebGLRenderer): void {
+        this.renderer = renderer;
+        this.createFadeOverlay();
+    }
+
+    private createFadeOverlay(): void {
+        if (!this.renderer) return;
+
+        const geometry = new THREE.PlaneGeometry(2, 2);
+        const material = new THREE.MeshBasicMaterial({
+            color: 0x000000,
+            transparent: true,
+            opacity: 0
+        });
+        this.fadeOverlay = new THREE.Mesh(geometry, material);
+        this.fadeOverlay.renderOrder = 999;
     }
 
     // Add a listener for scene changes
@@ -62,7 +85,59 @@ export class SceneManager {
         return this._currentScene;
     }
 
-    public changeScene(sceneId: string): void {
+    public async changeScene(sceneId: string): Promise<void> {
+        if (this.isTransitioning || !this.renderer || !this.fadeOverlay) {
+            this.setScene(sceneId);
+            return;
+        }
+
+        this.isTransitioning = true;
+
+        // Fade out current scene
+        await this.fade(1, 3000);
+
+        // Change scene
         this.setScene(sceneId);
+
+        // Fade in new scene
+        await this.fade(0, 3000);
+
+        this.isTransitioning = false;
+    }
+
+    private async fade(targetOpacity: number, duration: number): Promise<void> {
+        if (!this.fadeOverlay || !this.renderer || !this._currentScene) return;
+
+        const startOpacity = Array.isArray(this.fadeOverlay.material)
+            ? this.fadeOverlay.material[0].opacity
+            : this.fadeOverlay.material.opacity;
+        const startTime = performance.now();
+
+        // Add overlay to scene if not already present
+        if (!this._currentScene.threeScene.children.includes(this.fadeOverlay)) {
+            this._currentScene.threeScene.add(this.fadeOverlay);
+        }
+
+        return new Promise((resolve) => {
+            const animate = (currentTime: number) => {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                const material = this.fadeOverlay!.material as THREE.MeshBasicMaterial;
+                if (Array.isArray(material)) {
+                    material[0].opacity = startOpacity + (targetOpacity - startOpacity) * progress;
+                } else {
+                    material.opacity = startOpacity + (targetOpacity - startOpacity) * progress;
+                }
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    resolve();
+                }
+            };
+
+            requestAnimationFrame(animate);
+        });
     }
 }

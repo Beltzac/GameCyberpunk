@@ -109,11 +109,9 @@ export class Cena1TrabalhoScene extends Scene {
         // Transition to next scene when closing notebook
         if (!this.isNotebookOpen) {
             console.log('Preparing to transition to street scene...');
-            setTimeout(() => {
-                if (this.sceneManager) {
-                    this.sceneManager.changeScene('cena2_rua');
-                }
-            }, 1000);
+            if (this.sceneManager) {
+                this.sceneManager.changeScene('cena2_rua');
+            }
         }
     }
 

@@ -59,6 +59,9 @@ export class GameEngine {
         this.inputManager = new InputManager(this.canvas, this.camera, this.sceneManager); // Pass canvas, camera, and sceneManager
         this.assetLoader = new AssetLoader();
 
+        // Set renderer in SceneManager for transitions
+        this.sceneManager.setRenderer(this.renderer);
+
         // Add ambient light for phong materials
         const ambientLight = new THREE.AmbientLight(0xffffff, 1);
         ambientLight.layers.enable(1);
