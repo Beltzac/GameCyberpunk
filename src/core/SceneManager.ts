@@ -28,14 +28,25 @@ export class SceneManager {
     private createFadeOverlay(): void {
         if (!this.renderer) return;
 
+        // Create overlay that covers the entire viewport
         const geometry = new THREE.PlaneGeometry(2, 2);
         const material = new THREE.MeshBasicMaterial({
             color: 0x000000,
             transparent: true,
-            opacity: 0
+            opacity: 0,
+            depthTest: false
         });
         this.fadeOverlay = new THREE.Mesh(geometry, material);
         this.fadeOverlay.renderOrder = 999;
+        this.fadeOverlay.frustumCulled = false;
+
+        // Position and scale overlay to cover entire screen
+        if (this.renderer) {
+            // Make overlay large enough to cover any viewport size
+            this.fadeOverlay.scale.set(10, 10, 1);
+            // Position at camera's near plane (z = -1 in NDC)
+            this.fadeOverlay.position.z = -0.6;
+        }
     }
 
     // Add a listener for scene changes
@@ -93,16 +104,18 @@ export class SceneManager {
 
         this.isTransitioning = true;
 
-        // Fade out current scene
-        await this.fade(1, 3000);
+        try {
+            // Fade out current scene
+            await this.fade(1, 1000);
 
-        // Change scene
-        this.setScene(sceneId);
+            // Change scene
+            this.setScene(sceneId);
 
-        // Fade in new scene
-        await this.fade(0, 3000);
-
-        this.isTransitioning = false;
+            // Fade in new scene
+            await this.fade(0, 1000);
+        } finally {
+            this.isTransitioning = false;
+        }
     }
 
     private async fade(targetOpacity: number, duration: number): Promise<void> {
