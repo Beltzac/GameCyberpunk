@@ -19,6 +19,7 @@ export class Cena2RuaScene extends Scene {
         opacity: 0.8
     });
     private timeAccumulator = 0;
+    private buttonOffsets: number[] = [0, 0, 0];
 
     constructor(assetLoader: AssetLoader) {
         super();
@@ -129,6 +130,15 @@ export class Cena2RuaScene extends Scene {
         if (this.handSprite) {
             this.timeAccumulator += deltaTime;
             this.handSprite.position.y = -1.5 + Math.sin(this.timeAccumulator * 5) * 0.1;
+
+           // Animate thought buttons with random floating
+           for (let i = 0; i < this.thoughtButtons.length; i++) {
+               this.buttonOffsets[i] = this.buttonOffsets[i] || Math.random() * Math.PI * 2;
+               const button = this.thoughtButtons[i];
+               const offset = this.buttonOffsets[i];
+               button.position.x = -7 + Math.sin(this.timeAccumulator * 2 + offset) * 0.2;
+               button.position.y = (3 - (i * 1.5)) + Math.cos(this.timeAccumulator * 3 + offset) * 0.1;
+           }
         }
     }
 
