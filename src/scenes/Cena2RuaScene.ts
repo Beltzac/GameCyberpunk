@@ -2,9 +2,12 @@
 import * as THREE from 'three';
 import { Scene } from '../core/Scene';
 import { AssetLoader } from '../utils/AssetLoader';
+import { SceneManager } from '../core/SceneManager';
 
 export class Cena2RuaScene extends Scene {
     private assetLoader: AssetLoader;
+    private sceneManager: SceneManager;
+
     private backgroundSprite: THREE.Sprite | null = null;
     private handSprite: THREE.Sprite | null = null;
     private handTexture: THREE.Texture | null = null;
@@ -21,9 +24,10 @@ export class Cena2RuaScene extends Scene {
     private timeAccumulator = 0;
     private buttonOffsets: number[] = [0, 0, 0];
 
-    constructor(assetLoader: AssetLoader) {
+    constructor(assetLoader: AssetLoader, sceneManager: SceneManager) {
         super();
         this.assetLoader = assetLoader;
+        this.sceneManager = sceneManager;
         console.log("Cena2RuaScene created");
     }
 
@@ -157,6 +161,10 @@ export class Cena2RuaScene extends Scene {
            const buttonIndex = parseInt(clickedObject.name.replace("ThoughtButton", "")) - 1;
            console.log(`Thought button ${buttonIndex + 1} clicked`);
            // Add thought-specific logic here later
+
+           if (this.sceneManager) {
+                this.sceneManager.changeScene('cena1_trabalho');
+           }
         }
     }
 }

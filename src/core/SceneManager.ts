@@ -12,6 +12,7 @@ export class SceneManager {
     private fadeOverlay: THREE.Mesh | null = null;
     private renderer: THREE.WebGLRenderer | null = null;
     private isTransitioning: boolean = false;
+    private initializedScenes: Set<string> = new Set();
 
     constructor(gameState: GameState) {
         this.scenes = new Map<string, Scene>();
@@ -79,8 +80,11 @@ export class SceneManager {
         this.gameState.setScene(name); // Update game state
         console.log(`SceneManager: Current scene set to "${name}". Initializing...`);
 
-        // Initialize the new scene
-        this._currentScene.init();
+        // Initialize the new scene if not already initialized
+        if (!this.initializedScenes.has(name)) {
+            this._currentScene.init();
+            this.initializedScenes.add(name);
+        }
 
         // Notify listeners about scene change
         for (const listener of this.sceneChangeListeners) {

@@ -27,7 +27,7 @@ const gameEngine = new GameEngine(canvas);
 // Pass any required managers (like AssetLoader, UIManager) to scene constructors if needed
 
 const cena1TrabalhoScene = new Cena1TrabalhoScene(gameEngine.assetLoader, gameEngine.sceneManager);
-const cena2RuaScene = new Cena2RuaScene(gameEngine.assetLoader);
+const cena2RuaScene = new Cena2RuaScene(gameEngine.assetLoader, gameEngine.sceneManager);
 
 // 4. Add Scenes to the Scene Manager
 gameEngine.sceneManager.addScene('cena1_trabalho', cena1TrabalhoScene);
