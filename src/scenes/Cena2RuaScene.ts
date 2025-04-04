@@ -8,6 +8,8 @@ export class Cena2RuaScene extends Scene {
     private backgroundSprite: THREE.Sprite | null = null;
     private handSprite: THREE.Sprite | null = null;
     private handTexture: THREE.Texture | null = null;
+    private thoughtButtonTextures: THREE.Texture[] = [];
+    private thoughtButtons: THREE.Sprite[] = [];
     private rainParticles: THREE.Points | null = null;
     private rainGeometry = new THREE.BufferGeometry();
     private rainMaterial = new THREE.PointsMaterial({
@@ -30,7 +32,14 @@ export class Cena2RuaScene extends Scene {
         try {
             // Load all required assets
             const backgroundTexture = await this.assetLoader.loadTexture('assets/cena_2_rua/background.png');
-            this.handTexture = await this.assetLoader.loadTexture('assets/cena_2_rua/mao.png');
+           this.handTexture = await this.assetLoader.loadTexture('assets/cena_2_rua/mao.png');
+
+           // Load thought button textures
+           this.thoughtButtonTextures = [
+               await this.assetLoader.loadTexture('assets/cena_2_rua/thought1.png'),
+               await this.assetLoader.loadTexture('assets/cena_2_rua/thought2.png'),
+               await this.assetLoader.loadTexture('assets/cena_2_rua/thought3.png')
+           ];
 
             // Create background sprite (full screen, non-interactive)
             const backgroundMaterial = new THREE.SpriteMaterial({ map: backgroundTexture });
@@ -53,8 +62,22 @@ export class Cena2RuaScene extends Scene {
             // Setup rain particles
             this.setupRain();
 
-            // Add ambient light with cyberpunk colors
-            const ambientLight = new THREE.AmbientLight(0x404040);
+           // Create thought buttons
+           for (let i = 0; i < this.thoughtButtonTextures.length; i++) {
+               const material = new THREE.SpriteMaterial({
+                   map: this.thoughtButtonTextures[i],
+                   transparent: true
+               });
+               const button = new THREE.Sprite(material);
+               button.scale.set(2, 2, 1);
+               button.position.set(-5, 2 - (i * 2), 0.1); // Left side, vertically stacked
+               button.name = `ThoughtButton${i+1}`;
+               this.thoughtButtons.push(button);
+               this.threeScene.add(button);
+           }
+
+           // Add ambient light with cyberpunk colors
+           const ambientLight = new THREE.AmbientLight(0x404040);
             this.threeScene.add(ambientLight);
 
             // Add colored lights for cyberpunk effect
@@ -118,8 +141,12 @@ export class Cena2RuaScene extends Scene {
 
         const clickedObject = intersects[0].object;
         if (clickedObject.name === "Hand") {
-            // Handle hand/phone interaction
-            console.log("Hand/phone clicked");
+           // Handle hand/phone interaction
+           console.log("Hand/phone clicked");
+       } else if (clickedObject.name.startsWith("ThoughtButton")) {
+           const buttonIndex = parseInt(clickedObject.name.replace("ThoughtButton", "")) - 1;
+           console.log(`Thought button ${buttonIndex + 1} clicked`);
+           // Add thought-specific logic here later
         }
     }
 }
