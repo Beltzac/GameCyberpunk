@@ -89,9 +89,14 @@ export class Cena1TrabalhoScene extends Scene {
     }
 
     public toggleNotebook(): void {
-        if (!this.notebookSprite || !this.notebookOpenTexture || !this.notebookClosedTexture) return;
+        if (!this.notebookSprite || !this.notebookOpenTexture || !this.notebookClosedTexture) {
+            console.error('Missing required notebook components');
+            return;
+        }
 
         this.isNotebookOpen = !this.isNotebookOpen;
+        console.log(`Toggling notebook. New state: ${this.isNotebookOpen ? 'open' : 'closed'}`);
+
         const material = this.notebookSprite.material as THREE.SpriteMaterial;
         material.map = this.isNotebookOpen ? this.notebookOpenTexture : this.notebookClosedTexture;
         material.needsUpdate = true;
@@ -99,10 +104,16 @@ export class Cena1TrabalhoScene extends Scene {
 
     // Raycasting handler can be added here if needed
     public handleClick(intersects: THREE.Intersection[]): void {
-        if (!intersects.length) return;
+        if (!intersects.length) {
+            console.log('No objects clicked');
+            return;
+        }
 
         const clickedObject = intersects[0].object;
+        console.log(`Clicked object: ${clickedObject.name}`);
+
         if (clickedObject.name === "Notebook") {
+            console.log('Notebook clicked - toggling');
             this.toggleNotebook();
         }
     }

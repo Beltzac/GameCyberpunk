@@ -18,6 +18,9 @@ export abstract class Scene {
     // Called every frame to render the scene
     abstract render(renderer: THREE.WebGLRenderer): void;
 
+    // Handle click events on scene objects
+    abstract handleClick(intersects: THREE.Intersection[]): void;
+
     // Removed getThreeScene() as threeScene is now public
 
     // Optional: Add methods for handling scene activation/deactivation

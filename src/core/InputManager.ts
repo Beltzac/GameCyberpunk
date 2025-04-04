@@ -57,6 +57,9 @@ export class InputManager {
             const firstIntersected = intersects[0].object;
             const objectId = firstIntersected.name || firstIntersected.uuid;
             console.log(`InputManager: Raycast hit object: ${objectId}`);
+
+            // Forward intersects to current scene's click handler
+            currentScene.handleClick(intersects);
         } else {
             // Optional: Log if nothing was hit
             // console.log("InputManager: Raycast hit nothing.");
