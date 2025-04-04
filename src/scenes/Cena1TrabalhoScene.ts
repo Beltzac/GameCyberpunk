@@ -12,7 +12,7 @@ export class Cena1TrabalhoScene extends Scene {
     private notebookSprite: THREE.Sprite | null = null;
     private notebookOpenTexture: THREE.Texture | null = null;
     private notebookClosedTexture: THREE.Texture | null = null;
-    private isNotebookOpen: boolean = false;
+    private isNotebookOpen: boolean = true;
 
     constructor(assetLoader: AssetLoader, sceneManager: SceneManager) {
         super();
@@ -55,7 +55,7 @@ export class Cena1TrabalhoScene extends Scene {
 
             // Create notebook sprite (interactive object)
             const notebookMaterial = new THREE.SpriteMaterial({
-                map: this.notebookClosedTexture,
+                map: this.notebookOpenTexture,
                 transparent: true
             });
             this.notebookSprite = new THREE.Sprite(notebookMaterial);

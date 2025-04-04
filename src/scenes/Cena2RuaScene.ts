@@ -16,6 +16,7 @@ export class Cena2RuaScene extends Scene {
         transparent: true,
         opacity: 0.8
     });
+    private timeAccumulator = 0;
 
     constructor(assetLoader: AssetLoader) {
         super();
@@ -97,6 +98,12 @@ export class Cena2RuaScene extends Scene {
                 }
             }
             this.rainGeometry.attributes.position.needsUpdate = true;
+        }
+
+        // Animate hand bobbing
+        if (this.handSprite) {
+            this.timeAccumulator += deltaTime;
+            this.handSprite.position.y = -1 + Math.sin(this.timeAccumulator * 5) * 0.1;
         }
     }
 
