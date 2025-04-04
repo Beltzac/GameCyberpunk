@@ -2,18 +2,22 @@
 import * as THREE from 'three';
 import { Scene } from '../core/Scene';
 import { AssetLoader } from '../utils/AssetLoader';
+import { SceneManager } from '../core/SceneManager';
+import { Cena2RuaScene } from './Cena2RuaScene';
 
 export class Cena1TrabalhoScene extends Scene {
     private assetLoader: AssetLoader;
+    private sceneManager: SceneManager;
     private backgroundSprite: THREE.Sprite | null = null;
     private notebookSprite: THREE.Sprite | null = null;
     private notebookOpenTexture: THREE.Texture | null = null;
     private notebookClosedTexture: THREE.Texture | null = null;
     private isNotebookOpen: boolean = false;
 
-    constructor(assetLoader: AssetLoader) {
+    constructor(assetLoader: AssetLoader, sceneManager: SceneManager) {
         super();
         this.assetLoader = assetLoader;
+        this.sceneManager = sceneManager;
         console.log("Cena1TrabalhoScene created");
     }
 
@@ -100,6 +104,16 @@ export class Cena1TrabalhoScene extends Scene {
         const material = this.notebookSprite.material as THREE.SpriteMaterial;
         material.map = this.isNotebookOpen ? this.notebookOpenTexture : this.notebookClosedTexture;
         material.needsUpdate = true;
+
+        // Transition to next scene when closing notebook
+        if (!this.isNotebookOpen) {
+            console.log('Preparing to transition to street scene...');
+            setTimeout(() => {
+                if (this.sceneManager) {
+                    this.sceneManager.changeScene('cena2_rua');
+                }
+            }, 1000);
+        }
     }
 
     // Raycasting handler can be added here if needed

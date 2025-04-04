@@ -50,4 +50,8 @@ export class SceneManager {
     public get currentScene(): Scene | null {
         return this._currentScene;
     }
+
+    public changeScene(sceneId: string): void {
+        this.setScene(sceneId);
+    }
 }
