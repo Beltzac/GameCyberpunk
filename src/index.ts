@@ -1,48 +1,49 @@
-import * as THREE from 'three';
+// src/index.ts
+import { GameEngine } from './core/GameEngine';
+import { JoaoScene } from './scenes/JoaoScene';
+import { NyxScene } from './scenes/NyxScene';
+// Import other necessary managers or utilities if needed later
+// import { AssetLoader } from './utils/AssetLoader';
+// import { UIManager } from './ui/UIManager';
 
-// Get the canvas element
+// --- Main Application Setup ---
+
+// 1. Get the Canvas Element
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 
 if (!canvas) {
     throw new Error("Could not find canvas element with id 'game-canvas'");
 }
 
-// Basic Three.js setup
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({ canvas: canvas });
+// 2. Initialize the Game Engine
+console.log("Initializing Game Engine...");
+const gameEngine = new GameEngine(canvas);
 
-renderer.setSize(window.innerWidth, window.innerHeight);
-// No need to appendChild if canvas is provided in constructor
+// Optional: Instantiate other managers if they are needed outside the engine scope
+// const assetLoader = new AssetLoader();
+// const uiManager = new UIManager();
 
-// Add a simple cube for testing
-const geometry = new THREE.BoxGeometry(1, 1, 1);
-const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 }); // Green cube
-const cube = new THREE.Mesh(geometry, material);
-scene.add(cube);
+// 3. Create Scene Instances
+// Pass any required managers (like AssetLoader, UIManager) to scene constructors if needed
+const joaoScene = new JoaoScene(/* pass managers here if needed */);
+const nyxScene = new NyxScene(/* pass managers here if needed */);
 
-// Position the camera
-camera.position.z = 5;
+// 4. Add Scenes to the Scene Manager
+gameEngine.sceneManager.addScene('joao', joaoScene);
+gameEngine.sceneManager.addScene('nyx', nyxScene);
 
-// Animation loop
-function animate() {
-    requestAnimationFrame(animate);
+// 5. Set the Initial Scene
+gameEngine.sceneManager.setScene('joao'); // Start with Joao's scene
 
-    // Optional: Add some rotation for visual feedback
-    cube.rotation.x += 0.01;
-    cube.rotation.y += 0.01;
+// 6. Start the Game Engine's Main Loop
+gameEngine.start();
 
-    renderer.render(scene, camera);
-}
+console.log('AION Game Engine started.');
 
-// Handle window resize
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-}, false);
-
-// Start the animation loop
-animate();
-
-console.log('Three.js scene initialized.');
+// Optional: Add cleanup logic if needed (e.g., for hot module replacement)
+// if (module.hot) {
+//     module.hot.dispose(() => {
+//         console.log('Disposing game engine...');
+//         gameEngine.dispose();
+//     });
+// }
