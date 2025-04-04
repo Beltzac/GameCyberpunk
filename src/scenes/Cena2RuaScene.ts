@@ -44,8 +44,8 @@ export class Cena2RuaScene extends Scene {
                 transparent: true
             });
             this.handSprite = new THREE.Sprite(handMaterial);
-            this.handSprite.scale.set(2, 2, 1);
-            this.handSprite.position.set(0, -1, 0.1); // Positioned at bottom
+            this.handSprite.scale.set(7.25, 5, 1);
+            this.handSprite.position.set(3, -2, 0.1); // Positioned at bottom
             this.handSprite.name = "Hand";
             this.threeScene.add(this.handSprite);
 
@@ -103,7 +103,7 @@ export class Cena2RuaScene extends Scene {
         // Animate hand bobbing
         if (this.handSprite) {
             this.timeAccumulator += deltaTime;
-            this.handSprite.position.y = -1 + Math.sin(this.timeAccumulator * 5) * 0.1;
+            this.handSprite.position.y = -1.5 + Math.sin(this.timeAccumulator * 5) * 0.1;
         }
     }
 

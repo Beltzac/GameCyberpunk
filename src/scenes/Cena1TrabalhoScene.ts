@@ -59,8 +59,8 @@ export class Cena1TrabalhoScene extends Scene {
                 transparent: true
             });
             this.notebookSprite = new THREE.Sprite(notebookMaterial);
-            this.notebookSprite.scale.set(2, 2, 1);
-            this.notebookSprite.position.set(0, 0, 0.1); // Slightly in front of background
+            this.notebookSprite.scale.set(5, 5, 1);
+            this.notebookSprite.position.set(1, -1.5, 0.1); // Slightly in front of background
             this.notebookSprite.name = "Notebook";
             this.threeScene.add(this.notebookSprite);
 
