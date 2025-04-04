@@ -2,6 +2,8 @@
 import { GameEngine } from './core/GameEngine';
 import { JoaoScene } from './scenes/JoaoScene';
 import { NyxScene } from './scenes/NyxScene';
+import { Cena1TrabalhoScene } from './scenes/Cena1TrabalhoScene';
+import { Cena2RuaScene } from './scenes/Cena2RuaScene';
 // Import other necessary managers or utilities if needed later
 // import { AssetLoader } from './utils/AssetLoader';
 // import { UIManager } from './ui/UIManager';
@@ -27,10 +29,14 @@ const gameEngine = new GameEngine(canvas);
 // Pass any required managers (like AssetLoader, UIManager) to scene constructors if needed
 const joaoScene = new JoaoScene(/* pass managers here if needed */);
 const nyxScene = new NyxScene(/* pass managers here if needed */);
+const cena1TrabalhoScene = new Cena1TrabalhoScene(gameEngine.assetLoader);
+const cena2RuaScene = new Cena2RuaScene(gameEngine.assetLoader);
 
 // 4. Add Scenes to the Scene Manager
 gameEngine.sceneManager.addScene('joao', joaoScene);
 gameEngine.sceneManager.addScene('nyx', nyxScene);
+gameEngine.sceneManager.addScene('cena1_trabalho', cena1TrabalhoScene);
+gameEngine.sceneManager.addScene('cena2_rua', cena2RuaScene);
 
 // 5. Set the Initial Scene
 gameEngine.sceneManager.setScene('joao'); // Start with Joao's scene
