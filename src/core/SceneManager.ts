@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { Scene } from './Scene';
 import { GameState } from './GameState';
+import { AssetLoader } from '../utils/AssetLoader';
 
 export class SceneManager {
     private scenes: Map<string, Scene>;
@@ -96,7 +97,7 @@ export class SceneManager {
         return this._currentScene;
     }
 
-    public async changeScene(sceneId: string): Promise<void> {
+    public async changeScene(sceneId: string, assetLoader?: AssetLoader): Promise<void> {
         if (this.isTransitioning || !this.renderer || !this.fadeOverlay) {
             this.setScene(sceneId);
             return;
@@ -110,6 +111,11 @@ export class SceneManager {
 
             // Change scene
             this.setScene(sceneId);
+
+            // Wait for assets to load if AssetLoader is provided
+            if (assetLoader) {
+                await assetLoader.isEverythingLoaded();
+            }
 
             // Fade in new scene
             await this.fade(0, 1000);

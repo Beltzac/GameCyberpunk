@@ -73,4 +73,10 @@ export class AssetLoader {
         console.log("AssetLoader: Finished loading assets (placeholder)");
         return loadedAssets;
     }
+
+    public isEverythingLoaded(): Promise<void> {
+        return new Promise((resolve) => {
+            this.loadingManager.onLoad = () => resolve();
+        });
+    }
 }
