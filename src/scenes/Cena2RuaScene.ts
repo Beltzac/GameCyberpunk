@@ -32,10 +32,11 @@ export class Cena2RuaScene extends Scene {
             const backgroundTexture = await this.assetLoader.loadTexture('assets/cena_2_rua/background.png');
             this.handTexture = await this.assetLoader.loadTexture('assets/cena_2_rua/mao.png');
 
-            // Create background sprite (full screen)
+            // Create background sprite (full screen, non-interactive)
             const backgroundMaterial = new THREE.SpriteMaterial({ map: backgroundTexture });
             this.backgroundSprite = new THREE.Sprite(backgroundMaterial);
             this.backgroundSprite.scale.set(window.innerWidth / 100, window.innerHeight / 100, 1);
+            this.backgroundSprite.userData.isBackground = true; // Mark as background
             this.threeScene.add(this.backgroundSprite);
 
             // Create hand sprite (interactive object)
@@ -84,6 +85,7 @@ export class Cena2RuaScene extends Scene {
 
         this.rainGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         this.rainParticles = new THREE.Points(this.rainGeometry, this.rainMaterial);
+        this.rainParticles.userData.isBackground = true; // Mark rain as non-interactive
         this.threeScene.add(this.rainParticles);
     }
 

@@ -47,10 +47,11 @@ export class Cena1TrabalhoScene extends Scene {
                 throw error;
             });
 
-            // Create background sprite (full screen)
+            // Create background sprite (full screen, non-interactive)
             const backgroundMaterial = new THREE.SpriteMaterial({ map: backgroundTexture });
             this.backgroundSprite = new THREE.Sprite(backgroundMaterial);
             this.backgroundSprite.scale.set(window.innerWidth / 100, window.innerHeight / 100, 1);
+            this.backgroundSprite.userData.isBackground = true; // Mark as background
             this.threeScene.add(this.backgroundSprite);
 
             // Create notebook sprite (interactive object)

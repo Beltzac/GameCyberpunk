@@ -6,12 +6,18 @@ export class SceneManager {
     private scenes: Map<string, Scene>;
     private _currentScene: Scene | null;
     private gameState: GameState; // Optional: Pass GameState for context
+    private sceneChangeListeners: Array<(scene: Scene | null) => void> = [];
 
     constructor(gameState: GameState) { // Pass GameState if needed
         this.scenes = new Map<string, Scene>();
         this._currentScene = null;
         this.gameState = gameState; // Store GameState
         console.log("SceneManager initialized");
+    }
+
+    // Add a listener for scene changes
+    public onSceneChanged(callback: (scene: Scene | null) => void): void {
+        this.sceneChangeListeners.push(callback);
     }
 
     public addScene(name: string, scene: Scene): void {
@@ -40,6 +46,11 @@ export class SceneManager {
 
         // Initialize the new scene
         this._currentScene.init();
+
+        // Notify listeners about scene change
+        for (const listener of this.sceneChangeListeners) {
+            listener(this._currentScene);
+        }
 
         // Optional: Call enter method on the new scene
         // if (typeof this._currentScene.onEnter === 'function') {

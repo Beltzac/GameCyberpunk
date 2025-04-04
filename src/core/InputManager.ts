@@ -10,6 +10,13 @@ export class InputManager {
     private raycaster: THREE.Raycaster; // Add raycaster instance
     private mouse: THREE.Vector2; // Add mouse vector
 
+    // Mouse position in screen coordinates
+    private mouseX: number = 0;
+    private mouseY: number = 0;
+
+    // Mouse move callback
+    private mouseMoveCallbacks: Array<(x: number, y: number) => void> = [];
+
     constructor(canvas: HTMLCanvasElement, camera: THREE.Camera, sceneManager: SceneManager) { // Update constructor signature
         this.canvas = canvas;
         this.camera = camera; // Store camera
@@ -24,10 +31,35 @@ export class InputManager {
         // Example: Click listener
         this.canvas.addEventListener('click', this.handleCanvasClick.bind(this));
 
-        // Add other listeners as needed (e.g., keydown, keyup, mousemove)
+        // Add mouse move listener
+        this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
+
+        // Add other listeners as needed (e.g., keydown, keyup)
         // window.addEventListener('keydown', this.handleKeyDown.bind(this));
         // window.addEventListener('keyup', this.handleKeyUp.bind(this));
-        // this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
+    }
+
+    // Register a callback for mouse move events
+    public onMouseMove(callback: (x: number, y: number) => void): void {
+        this.mouseMoveCallbacks.push(callback);
+    }
+
+    // Handle mouse move events
+    private handleMouseMove(event: MouseEvent): void {
+        const rect = this.canvas.getBoundingClientRect();
+
+        // Store mouse position in screen coordinates
+        this.mouseX = event.clientX;
+        this.mouseY = event.clientY;
+
+        // Calculate mouse position in normalized device coordinates (-1 to +1)
+        this.mouse.x = ((event.clientX - rect.left) / this.canvas.clientWidth) * 2 - 1;
+        this.mouse.y = -((event.clientY - rect.top) / this.canvas.clientHeight) * 2 + 1;
+
+        // Notify all registered callbacks
+        for (const callback of this.mouseMoveCallbacks) {
+            callback(this.mouseX, this.mouseY);
+        }
     }
 
     private handleCanvasClick(event: MouseEvent): void {
@@ -49,8 +81,12 @@ export class InputManager {
         // Update the picking ray with the camera and mouse position
         this.raycaster.setFromCamera(this.mouse, this.camera);
 
-        // Calculate objects intersecting the picking ray
-        const intersects = this.raycaster.intersectObjects(currentScene.threeScene.children);
+        // Calculate objects intersecting the picking ray, filtering out non-interactive objects
+        const intersects = this.raycaster.intersectObjects(
+            currentScene.threeScene.children.filter(obj =>
+                !obj.userData.isCustomCursor && !obj.userData.isBackground
+            )
+        );
 
         if (intersects.length > 0) {
             // Log the name or UUID of the first intersected object
@@ -90,7 +126,9 @@ export class InputManager {
     // Method to remove listeners if needed (e.g., when stopping the engine)
     public dispose(): void {
         this.canvas.removeEventListener('click', this.handleCanvasClick);
-        // Remove other listeners
+        this.canvas.removeEventListener('mousemove', this.handleMouseMove);
+        // Clear all callbacks
+        this.mouseMoveCallbacks = [];
         console.log("InputManager disposed");
     }
 }
