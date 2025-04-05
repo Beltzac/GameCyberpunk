@@ -11,6 +11,8 @@ export class Cena2RuaScene extends Scene {
     private backgroundSprite: THREE.Sprite | null = null;
     private handSprite: THREE.Sprite | null = null;
     private handTexture: THREE.Texture | null = null;
+    private phoneSprite: THREE.Sprite | null = null;
+    private phoneTexture: THREE.Texture | null = null;
     private thoughtButtonTextures: THREE.Texture[] = [];
     private thoughtButtons: THREE.Sprite[] = [];
     private rainParticles: THREE.Points | null = null;
@@ -21,6 +23,7 @@ export class Cena2RuaScene extends Scene {
         transparent: true,
         opacity: 0.8
     });
+    private animationState: 'idle' | 'handMovingDown' | 'phoneMovingUp' | 'phoneIdle' = 'idle';
     private timeAccumulator = 0;
     private buttonOffsets: number[] = [0, 0, 0];
 
@@ -37,7 +40,8 @@ export class Cena2RuaScene extends Scene {
         try {
             // Load all required assets
             const backgroundTexture = await this.assetLoader.loadTexture('assets/cena_2_rua/background.png');
-           this.handTexture = await this.assetLoader.loadTexture('assets/cena_2_rua/mao.png');
+            this.handTexture = await this.assetLoader.loadTexture('assets/cena_2_rua/mao.png');
+            this.phoneTexture = await this.assetLoader.loadTexture('assets/cena_2_rua/celular2.png');
 
            // Load thought button textures
            this.thoughtButtonTextures = [
@@ -133,7 +137,30 @@ export class Cena2RuaScene extends Scene {
         // Animate hand bobbing
         if (this.handSprite) {
             this.timeAccumulator += deltaTime;
-            this.handSprite.position.y = -1.5 + Math.sin(this.timeAccumulator * 5) * 0.1;
+
+            // Handle animation states
+            if (this.animationState === 'handMovingDown') {
+                // Animate hand down
+                this.handSprite.position.y -= deltaTime * 5;
+                if (this.handSprite.position.y <= -7) {
+                    this.handSprite.position.y = -7;
+                    this.animationState = 'phoneMovingUp';
+                    // Make phone visible
+                    if (this.phoneSprite?.material) {
+                        (this.phoneSprite.material as THREE.SpriteMaterial).opacity = 1;
+                    }
+                }
+            } else if (this.animationState === 'phoneMovingUp' && this.phoneSprite) {
+                // Animate phone up
+                this.phoneSprite.position.y += deltaTime * 5;
+                if (this.phoneSprite.position.y >= 0) {
+                    this.phoneSprite.position.y = 0;
+                    this.animationState = 'phoneIdle';
+                }
+            } else if (this.animationState === 'idle') {
+                // Normal hand bobbing animation
+                this.handSprite.position.y = -1.5 + Math.sin(this.timeAccumulator * 5) * 0.1;
+            }
 
            // Animate thought buttons with random floating
            for (let i = 0; i < this.thoughtButtons.length; i++) {
@@ -154,9 +181,22 @@ export class Cena2RuaScene extends Scene {
         if (!intersects.length) return;
 
         const clickedObject = intersects[0].object;
-        if (clickedObject.name === "Hand") {
-           // Handle hand/phone interaction
-           console.log("Hand/phone clicked");
+        if (clickedObject.name === "Hand" && this.handSprite && this.animationState === 'idle') {
+            console.log("Hand clicked - starting hand animation");
+            this.animationState = 'handMovingDown';
+
+            // Create phone sprite at bottom (hidden initially)
+            if (this.phoneTexture) {
+                const phoneMaterial = new THREE.SpriteMaterial({
+                    map: this.phoneTexture,
+                    transparent: true,
+                    opacity: 0
+                });
+                this.phoneSprite = new THREE.Sprite(phoneMaterial);
+                this.phoneSprite.scale.set(6, 9, 1);
+                this.phoneSprite.position.set(0, -5, 0.2);
+                this.threeScene.add(this.phoneSprite);
+            }
        } else if (clickedObject.name.startsWith("ThoughtButton")) {
            const buttonIndex = parseInt(clickedObject.name.replace("ThoughtButton", "")) - 1;
            console.log(`Thought button ${buttonIndex + 1} clicked`);
