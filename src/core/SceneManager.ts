@@ -101,11 +101,23 @@ export class SceneManager {
         return this._currentScene;
     }
 
+    private nextSceneId: string | null = null;
+
     public async changeScene(sceneId: string, assetLoader?: AssetLoader): Promise<void> {
-        if (this.isTransitioning || !this.renderer || !this.fadeOverlay) {
+        if (this.isTransitioning) {
+            if (this.nextSceneId === sceneId) {
+                return;
+            }
+            console.warn(`SceneManager: Already transitioning to scene "${this.nextSceneId}". Request to change to "${sceneId}" ignored.`);
+            return;
+        }
+
+        if (!this.renderer || !this.fadeOverlay) {
             this.setScene(sceneId);
             return;
         }
+
+        this.nextSceneId = sceneId;
 
         this.isTransitioning = true;
 
@@ -125,6 +137,7 @@ export class SceneManager {
             await this.fade(0, 1000);
         } finally {
             this.isTransitioning = false;
+            this.nextSceneId = null;
         }
     }
 
