@@ -306,6 +306,8 @@ export class InputManager {
         if (!this.sceneManager.currentScene) return;
 
         // Use the dedicated hover raycaster
+        // Explicitly set raycaster to check layer 0 (where clickable objects likely are)
+        this.hoverRaycaster.layers.set(0);
         this.hoverRaycaster.setFromCamera(mousePositionNDC, this.camera);
 
         // Get interactive objects from the current scene
@@ -329,6 +331,7 @@ export class InputManager {
             (!this.isOverClickable && this.cursorMaterial.emissiveIntensity > 0);
 
         if (needsUpdate) {
+             console.log(`InputManager: Updating cursor appearance. isOverClickable: ${this.isOverClickable}`); // Add log for debugging
             if (this.isOverClickable) {
                 this.cursorMaterial.color.set(0xffff00); // Yellow
                 this.cursorMaterial.emissive.set(0xffff00);
