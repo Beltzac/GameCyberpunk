@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { Scene } from './Scene';
 import { GameState } from './GameState';
 import { AssetLoader } from '../utils/AssetLoader';
+import { Easing } from '../utils/Easing';
 
 export class SceneManager {
     private scenes: Map<string, Scene>;
@@ -104,6 +105,7 @@ export class SceneManager {
     private nextSceneId: string | null = null;
 
     public async changeScene(sceneId: string, assetLoader?: AssetLoader): Promise<void> {
+
         if (this.isTransitioning) {
             if (this.nextSceneId === sceneId) {
                 return;
@@ -123,7 +125,7 @@ export class SceneManager {
 
         try {
             // Fade out current scene
-            await this.fade(1, 1000);
+            await this.fade(1, 1000, Easing.easeInCubic);
 
             // Change scene
             this.setScene(sceneId);
@@ -134,14 +136,14 @@ export class SceneManager {
             }
 
             // Fade in new scene
-            await this.fade(0, 1000);
+            await this.fade(0, 1000, Easing.easeOutCubic);
         } finally {
             this.isTransitioning = false;
             this.nextSceneId = null;
         }
     }
 
-    private async fade(targetOpacity: number, duration: number): Promise<void> {
+    private async fade(targetOpacity: number, duration: number, easingFn: (t: number) => number = Easing.linear): Promise<void> {
         if (!this.fadeOverlay || !this.renderer || !this._currentScene) return;
 
         const startOpacity = Array.isArray(this.fadeOverlay.material)
@@ -161,9 +163,9 @@ export class SceneManager {
 
                 const material = this.fadeOverlay!.material as THREE.MeshBasicMaterial;
                 if (Array.isArray(material)) {
-                    material[0].opacity = startOpacity + (targetOpacity - startOpacity) * progress;
+                    material[0].opacity = startOpacity + (targetOpacity - startOpacity) * easingFn(progress);
                 } else {
-                    material.opacity = startOpacity + (targetOpacity - startOpacity) * progress;
+                    material.opacity = startOpacity + (targetOpacity - startOpacity) * easingFn(progress);
                 }
 
                 if (progress < 1) {
