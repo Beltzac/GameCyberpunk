@@ -13,17 +13,10 @@ export class GameEngine {
     private clock: THREE.Clock;
 
     public gameState: GameState;
-    public sceneManager: SceneManager;
+    public sceneManager: SceneManager; // Keep only one declaration
     public inputManager: InputManager;
     public assetLoader: AssetLoader;
-    private cursorTexture: THREE.Texture | null = null;
-    private cursorMesh: THREE.Mesh | null = null;
-    private cursorMaterial: THREE.MeshPhongMaterial | null = null;
-    private mouseX: number = 0;
-    private mouseY: number = 0;
-    private raycaster: THREE.Raycaster = new THREE.Raycaster();
-    private isOverClickable: boolean = false;
-
+    // Removed cursor properties: cursorTexture, cursorMesh, cursorMaterial, mouseX, mouseY, raycaster, isOverClickable
     private animationFrameId: number | null = null;
 
     constructor(canvas: HTMLCanvasElement) {
@@ -60,31 +53,30 @@ export class GameEngine {
         this.clock = new THREE.Clock();
 
         // Core Managers
-        this.gameState = new GameState(); // Instantiate GameState
-        this.sceneManager = new SceneManager(this.gameState, this); // Pass GameState to SceneManager
-        this.inputManager = new InputManager(this.canvas, this.camera, this.sceneManager); // Pass canvas, camera, and sceneManager
-        this.assetLoader = new AssetLoader();
+        this.gameState = new GameState();
+        this.assetLoader = new AssetLoader(); // Initialize assetLoader *before* inputManager
+        this.sceneManager = new SceneManager(this.gameState, this);
+        this.inputManager = new InputManager(this.canvas, this.camera, this.sceneManager, this.assetLoader); // Now assetLoader is initialized
 
         // Set renderer in SceneManager for transitions
         this.sceneManager.setRenderer(this.renderer);
 
         // Add ambient light for phong materials
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1);
-        ambientLight.layers.set(1);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); // Adjusted intensity slightly
+        // Removed ambientLight.layers.set(1) - Layer 1 is now managed by InputManager for the cursor
+        // Keep camera layer 1 enabled as InputManager uses it.
 
         // Add light to each scene when it's created
         this.sceneManager.onSceneChanged((scene) => {
             if (scene && scene.threeScene) {
-                scene.threeScene.add(ambientLight);
+                // Add ambient light if not already present
+                if (!scene.threeScene.children.some(child => child instanceof THREE.AmbientLight)) {
+                     scene.threeScene.add(ambientLight.clone()); // Clone to avoid issues if light is removed elsewhere
+                }
             }
         });
 
-        // Load cursor texture after InputManager is initialized
-        this.loadCursorTexture().then(() => {
-            if (this.sceneManager.currentScene && this.cursorMesh) {
-                this.sceneManager.currentScene.threeScene.add(this.cursorMesh);
-            }
-        });
+        // Removed loadCursorTexture call - InputManager handles this now
 
         // Handle window resizing
         window.addEventListener('resize', this.onWindowResize.bind(this), false);
@@ -122,8 +114,7 @@ export class GameEngine {
         if (currentScene) {
             // 1. Update game logic
             currentScene.update(deltaTime);
-            // 2. Update cursor position
-            this.updateCursorPosition();
+            // Removed call to this.updateCursorPosition() - InputManager handles this
             // 3. Render the scene
             this.renderer.render(currentScene.threeScene, this.camera);
         } else {
@@ -165,141 +156,5 @@ export class GameEngine {
         console.log("GameEngine: Disposed.");
     }
 
-    private async loadCursorTexture(): Promise<void> {
-        try {
-            // Use absolute path from project root
-            const texture = await this.assetLoader.loadTexture('assets/cursor/cursor_normal.png');
-            this.cursorTexture = texture;
-
-            // Create cursor material with glow effect capability
-            this.cursorMaterial = new THREE.MeshPhongMaterial({
-                map: texture,
-                transparent: true,
-                depthTest: false,
-                side: THREE.DoubleSide, // Make visible from both sides
-                color: new THREE.Color(0xffffff), // Default white color
-                emissive: new THREE.Color(0x000000),
-                emissiveIntensity: 0,
-                shininess: 0
-            });
-
-            // Create cursor mesh
-            this.cursorMesh = new THREE.Mesh(
-                new THREE.PlaneGeometry(0.5, 0.5), // Adjust size for better visibility
-                this.cursorMaterial
-            );
-            this.cursorMesh.renderOrder = 1000; // Ensure it renders on top
-
-            // Make cursor non-interactive for raycasting
-            this.cursorMesh.userData.isCustomCursor = true;
-            if (this.sceneManager.currentScene) {
-                this.sceneManager.currentScene.threeScene.add(this.cursorMesh);
-            }
-            this.cursorMesh.layers.set(1); // Put cursor on a different layer
-
-            // Hide system cursor
-            document.body.style.cursor = 'none';
-            this.canvas.style.cursor = 'none';
-
-            // Use InputManager's mouse position instead of adding our own listener
-            this.inputManager.onMouseMove((x, y) => {
-                this.mouseX = x;
-                this.mouseY = y;
-            });
-
-        } catch (error) {
-            console.error('Failed to load cursor texture:', error);
-        }
-    }
-
-    private updateCursorPosition(): void {
-        if (!this.cursorMesh || !this.cursorMaterial || !this.sceneManager.currentScene) {
-            console.log("Cursor or scene not initialized, skipping cursor update.");
-            return;
-        }
-
-        // Convert mouse coordinates to normalized device coordinates
-        const rect = this.canvas.getBoundingClientRect();
-        const x = ((this.mouseX - rect.left) / rect.width) * 2 - 1;
-        const y = -((this.mouseY - rect.top) / rect.height) * 2 + 1;
-
-        // Create a fixed distance from camera for consistent cursor size
-        const distance = 5; // Closer to camera for better visibility
-
-        // Update cursor position in 3D space
-        // Directly set the cursor position based on NDC coordinates
-        this.cursorMesh.position.x = x * (this.camera.right); // Scale factor to match the frustum size
-        this.cursorMesh.position.y = y * (this.camera.top); // Scale factor to match the frustum size
-        //console.log("NDC Coordinates: x=" + x + ", y=" + y);
-        this.cursorMesh.position.z = -1; // Fixed z position within the camera's view
-       // console.log("Cursor Position: x=" + this.cursorMesh.position.x + ", y=" + this.cursorMesh.position.y + ", z=" + this.cursorMesh.position.z);
-
-        // console.log("NDC Coordinates: x=" + x + ", y=" + y);
-        // console.log("Cursor Position: x=" + this.cursorMesh.position.x + ", y=" + this.cursorMesh.position.y + ", z=" + this.cursorMesh.position.z);
-
-        // let position = "unknown";
-        // if (this.mouseX < window.innerWidth / 3 && this.mouseY < window.innerHeight / 3) {
-        //     position = "top-left";
-        // } else if (this.mouseX > 2 * window.innerWidth / 3 && this.mouseY < window.innerHeight / 3) {
-        //     position = "top-right";
-        // } else if (this.mouseX < window.innerWidth / 3 && this.mouseY > 2 * window.innerHeight / 3) {
-        //     position = "bottom-left";
-        // } else if (this.mouseX > 2 * window.innerWidth / 3 && this.mouseY > 2 * window.innerHeight / 3) {
-        //     position = "bottom-right";
-        // } else if (this.mouseX > window.innerWidth / 3 && this.mouseX < 2 * window.innerWidth / 3 && this.mouseY > window.innerHeight / 3 && this.mouseY < 2 * window.innerHeight / 3) {
-        //     position = "center";
-        // }
-
-        // console.log("Position: " + position + ", Mouse Coordinates: x=" + this.mouseX + ", y=" + this.mouseY);
-        // console.log("Position: " + position + ", NDC Coordinates: x=" + x + ", y=" + y);
-        // console.log("Position: " + position + ", Cursor Position: x=" + cursorPosition.x + ", y=" + cursorPosition.y + ", z=" + cursorPosition.z);
-
-        // Make cursor face the camera
-        //this.cursorMesh.lookAt(this.camera.position);
-
-        // Add cursor to current scene if not already present
-        const currentScene = this.sceneManager.currentScene.threeScene;
-        if (!currentScene.children.includes(this.cursorMesh)) {
-            currentScene.add(this.cursorMesh);
-        }
-        // Update cursor appearance based on whether it's over a clickable object
-        this.updateCursorAppearance();
-    }
-
-    private checkCursorOverClickable(mousePosition: THREE.Vector2): void {
-        if (!this.sceneManager.currentScene) return;
-
-        // Create a temporary raycaster for checking clickable objects
-        const tempRaycaster = new THREE.Raycaster();
-        tempRaycaster.setFromCamera(mousePosition, this.camera);
-
-        // Get all objects in the scene except the cursor
-        const objects = this.sceneManager.currentScene.threeScene.children.filter(
-            obj => !obj.userData.isCustomCursor && !obj.userData.isBackground
-        );
-
-        // Check for intersections
-        const intersects = tempRaycaster.intersectObjects(objects, true);
-
-        // Update isOverClickable flag
-        this.isOverClickable = intersects.length > 0;
-    }
-
-    private updateCursorAppearance(): void {
-        if (!this.cursorMaterial) return;
-
-        if (this.isOverClickable) {
-            // Make cursor glow when over clickable object
-            this.cursorMaterial.color.set(0xffff00); // Yellow glow
-            this.cursorMaterial.emissive.set(0xffff00);
-            this.cursorMaterial.emissiveIntensity = 0.5;
-            this.cursorMaterial.needsUpdate = true;
-        } else {
-            // Reset to normal appearance
-            this.cursorMaterial.color.set(0xffffff); // White (normal)
-            this.cursorMaterial.emissive.set(0x000000);
-            this.cursorMaterial.emissiveIntensity = 0;
-            this.cursorMaterial.needsUpdate = true;
-        }
-    }
+    // Removed cursor methods: loadCursorTexture, updateCursorPosition, checkCursorOverClickable, updateCursorAppearance
 }
