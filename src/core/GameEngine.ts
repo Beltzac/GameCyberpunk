@@ -114,6 +114,8 @@ export class GameEngine {
         if (currentScene) {
             // 1. Update game logic
             currentScene.update(deltaTime);
+            // 2. Update InputManager (handles cursor position and click animations)
+            this.inputManager.update(deltaTime);
             // Removed call to this.updateCursorPosition() - InputManager handles this
             // 3. Render the scene
             this.renderer.render(currentScene.threeScene, this.camera);
