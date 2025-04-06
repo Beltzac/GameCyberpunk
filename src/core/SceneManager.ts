@@ -8,6 +8,7 @@ import { Easing } from '../utils/Easing';
 export class SceneManager {
     private scenes: Map<string, Scene>;
     private _currentScene: Scene | null;
+    public gameEngine: any; // TODO: Type this properly
     private gameState: GameState;
     private sceneChangeListeners: Array<(scene: Scene | null) => void> = [];
     private fadeOverlay: THREE.Mesh | null = null;
@@ -15,9 +16,10 @@ export class SceneManager {
     private isTransitioning: boolean = false;
     private initializedScenes: Set<string> = new Set();
 
-    constructor(gameState: GameState) {
+    constructor(gameState: GameState, gameEngine: any) {
         this.scenes = new Map<string, Scene>();
         this._currentScene = null;
+        this.gameEngine = gameEngine;
         this.gameState = gameState;
         this.isTransitioning = false;
         console.log("SceneManager initialized");

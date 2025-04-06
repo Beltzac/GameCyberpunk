@@ -9,7 +9,7 @@ import { AssetLoader } from '../utils/AssetLoader';
 export class GameEngine {
     private canvas: HTMLCanvasElement;
     private renderer: THREE.WebGLRenderer;
-    private camera: THREE.PerspectiveCamera;
+    private camera: THREE.OrthographicCamera;
     private clock: THREE.Clock;
 
     public gameState: GameState;
@@ -42,20 +42,26 @@ export class GameEngine {
         // this.renderer.outputEncoding = THREE.sRGBEncoding;
 
         // Basic Camera
-        this.camera = new THREE.PerspectiveCamera(
-            75, // Field of view
-            window.innerWidth / window.innerHeight, // Aspect ratio
-            0.1, // Near clipping plane
-            1000 // Far clipping plane
+        const aspect = window.innerWidth / window.innerHeight;
+        const frustumSize = 5; // Adjust as needed
+
+        this.camera = new THREE.OrthographicCamera(
+            frustumSize * aspect / - 2,
+            frustumSize * aspect / 2,
+            frustumSize / 2,
+            frustumSize / - 2,
+            0.1,
+            1000
         );
         this.camera.position.z = 5; // Default camera position
+        console.log("Camera Layer: ", this.camera.layers.mask);
         this.camera.layers.enable(1); // Enable layer 1 for cursor visibility
 
         this.clock = new THREE.Clock();
 
         // Core Managers
         this.gameState = new GameState(); // Instantiate GameState
-        this.sceneManager = new SceneManager(this.gameState); // Pass GameState to SceneManager
+        this.sceneManager = new SceneManager(this.gameState, this); // Pass GameState to SceneManager
         this.inputManager = new InputManager(this.canvas, this.camera, this.sceneManager); // Pass canvas, camera, and sceneManager
         this.assetLoader = new AssetLoader();
 
@@ -64,7 +70,7 @@ export class GameEngine {
 
         // Add ambient light for phong materials
         const ambientLight = new THREE.AmbientLight(0xffffff, 1);
-        ambientLight.layers.enable(1);
+        ambientLight.layers.set(1);
 
         // Add light to each scene when it's created
         this.sceneManager.onSceneChanged((scene) => {
@@ -74,7 +80,11 @@ export class GameEngine {
         });
 
         // Load cursor texture after InputManager is initialized
-        this.loadCursorTexture();
+        this.loadCursorTexture().then(() => {
+            if (this.sceneManager.currentScene && this.cursorMesh) {
+                this.sceneManager.currentScene.threeScene.add(this.cursorMesh);
+            }
+        });
 
         // Handle window resizing
         window.addEventListener('resize', this.onWindowResize.bind(this), false);
@@ -112,10 +122,8 @@ export class GameEngine {
         if (currentScene) {
             // 1. Update game logic
             currentScene.update(deltaTime);
-
             // 2. Update cursor position
             this.updateCursorPosition();
-
             // 3. Render the scene
             this.renderer.render(currentScene.threeScene, this.camera);
         } else {
@@ -126,8 +134,14 @@ export class GameEngine {
     }
 
     private onWindowResize(): void {
-        // Update camera aspect ratio
-        this.camera.aspect = window.innerWidth / window.innerHeight;
+        // Update camera
+        const aspect = window.innerWidth / window.innerHeight;
+        const frustumSize = 5;
+
+        this.camera.left = frustumSize * aspect / - 2;
+        this.camera.right = frustumSize * aspect / 2;
+        this.camera.top = frustumSize / 2;
+        this.camera.bottom = frustumSize / - 2;
         this.camera.updateProjectionMatrix();
 
         // Update renderer size
@@ -155,6 +169,7 @@ export class GameEngine {
         try {
             // Use absolute path from project root
             const texture = await this.assetLoader.loadTexture('assets/cursor/cursor_normal.png');
+            console.log("Cursor texture loaded successfully", texture);
             this.cursorTexture = texture;
 
             // Create cursor material with glow effect capability
@@ -171,13 +186,19 @@ export class GameEngine {
 
             // Create cursor mesh
             this.cursorMesh = new THREE.Mesh(
-                new THREE.PlaneGeometry(0.06, 0.06), // Adjust size for better visibility
+                new THREE.PlaneGeometry(0.5, 0.5), // Adjust size for better visibility
                 this.cursorMaterial
             );
-            this.cursorMesh.renderOrder = 999; // Ensure it renders on top
+            this.cursorMesh.renderOrder = 1000; // Ensure it renders on top
+            console.log("Cursor mesh created successfully");
+            console.log("Cursor Mesh Created: ", this.cursorMesh);
 
             // Make cursor non-interactive for raycasting
             this.cursorMesh.userData.isCustomCursor = true;
+            if (this.sceneManager.currentScene) {
+                console.log("Adding cursor to scene", this.cursorMesh);
+                this.sceneManager.currentScene.threeScene.add(this.cursorMesh);
+            }
             this.cursorMesh.layers.set(1); // Put cursor on a different layer
 
             // Hide system cursor
@@ -196,7 +217,10 @@ export class GameEngine {
     }
 
     private updateCursorPosition(): void {
-        if (!this.cursorMesh || !this.cursorMaterial || !this.sceneManager.currentScene) return;
+        if (!this.cursorMesh || !this.cursorMaterial || !this.sceneManager.currentScene) {
+            console.log("Cursor or scene not initialized, skipping cursor update.");
+            return;
+        }
 
         // Convert mouse coordinates to normalized device coordinates
         const rect = this.canvas.getBoundingClientRect();
@@ -204,18 +228,37 @@ export class GameEngine {
         const y = -((this.mouseY - rect.top) / rect.height) * 2 + 1;
 
         // Create a fixed distance from camera for consistent cursor size
-        const distance = 0.5; // Closer to camera for better visibility
+        const distance = 5; // Closer to camera for better visibility
 
         // Update cursor position in 3D space
-        this.raycaster.setFromCamera(new THREE.Vector2(x, y), this.camera);
+        // Directly set the cursor position based on NDC coordinates
+        this.cursorMesh.position.x = x * (this.camera.right); // Scale factor to match the frustum size
+        this.cursorMesh.position.y = y * (this.camera.top); // Scale factor to match the frustum size
+        //console.log("Cursor Position: x=" + this.cursorMesh.position.x + ", y=" + this.cursorMesh.position.y + ", z=" + this.cursorMesh.position.z);
+        //console.log("Camera Frustum: left=" + this.camera.left + ", right=" + this.camera.right + ", top=" + this.camera.top + ", bottom=" + this.camera.bottom);
+        //console.log("NDC Coordinates: x=" + x + ", y=" + y);
+        this.cursorMesh.position.z = -1; // Fixed z position within the camera's view
+       // console.log("Cursor Position: x=" + this.cursorMesh.position.x + ", y=" + this.cursorMesh.position.y + ", z=" + this.cursorMesh.position.z);
 
-        // Check if cursor is over a clickable object
-        this.checkCursorOverClickable(new THREE.Vector2(x, y));
+        // console.log("NDC Coordinates: x=" + x + ", y=" + y);
+        // console.log("Cursor Position: x=" + this.cursorMesh.position.x + ", y=" + this.cursorMesh.position.y + ", z=" + this.cursorMesh.position.z);
 
-        // Position the cursor along the ray at a fixed distance
-        const cursorPosition = new THREE.Vector3();
-        cursorPosition.copy(this.raycaster.ray.origin).addScaledVector(this.raycaster.ray.direction, distance);
-        this.cursorMesh.position.copy(cursorPosition);
+        // let position = "unknown";
+        // if (this.mouseX < window.innerWidth / 3 && this.mouseY < window.innerHeight / 3) {
+        //     position = "top-left";
+        // } else if (this.mouseX > 2 * window.innerWidth / 3 && this.mouseY < window.innerHeight / 3) {
+        //     position = "top-right";
+        // } else if (this.mouseX < window.innerWidth / 3 && this.mouseY > 2 * window.innerHeight / 3) {
+        //     position = "bottom-left";
+        // } else if (this.mouseX > 2 * window.innerWidth / 3 && this.mouseY > 2 * window.innerHeight / 3) {
+        //     position = "bottom-right";
+        // } else if (this.mouseX > window.innerWidth / 3 && this.mouseX < 2 * window.innerWidth / 3 && this.mouseY > window.innerHeight / 3 && this.mouseY < 2 * window.innerHeight / 3) {
+        //     position = "center";
+        // }
+
+        // console.log("Position: " + position + ", Mouse Coordinates: x=" + this.mouseX + ", y=" + this.mouseY);
+        // console.log("Position: " + position + ", NDC Coordinates: x=" + x + ", y=" + y);
+        // console.log("Position: " + position + ", Cursor Position: x=" + cursorPosition.x + ", y=" + cursorPosition.y + ", z=" + cursorPosition.z);
 
         // Make cursor face the camera
         //this.cursorMesh.lookAt(this.camera.position);
@@ -223,9 +266,10 @@ export class GameEngine {
         // Add cursor to current scene if not already present
         const currentScene = this.sceneManager.currentScene.threeScene;
         if (!currentScene.children.includes(this.cursorMesh)) {
+        console.log("Scene Children: ", currentScene.children);
+            console.log("Cursor added to scene");
             currentScene.add(this.cursorMesh);
         }
-
         // Update cursor appearance based on whether it's over a clickable object
         this.updateCursorAppearance();
     }
