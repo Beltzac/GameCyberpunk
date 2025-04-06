@@ -298,8 +298,13 @@ export class InputManager {
         // Update cursor mesh position in 3D space based on camera type
         if (this.camera instanceof THREE.OrthographicCamera) {
             // For Orthographic camera, map NDC directly to view coordinates
-            this.cursorMesh.position.x = x * (this.camera.right);
-            this.cursorMesh.position.y = y * (this.camera.top);
+            const basePosX = x * (this.camera.right);
+            const basePosY = y * (this.camera.top);
+            // Offset position so top-left corner aligns with the pointer
+            const cursorWidth = 0.5; // Must match PlaneGeometry width
+            const cursorHeight = 0.5; // Must match PlaneGeometry height
+            this.cursorMesh.position.x = basePosX + cursorWidth / 2;
+            this.cursorMesh.position.y = basePosY - cursorHeight / 2;
             this.cursorMesh.position.z = -1; // Keep close to the camera plane
         } else if (this.camera instanceof THREE.PerspectiveCamera) {
             // For Perspective camera, unproject NDC to a point in world space
@@ -308,7 +313,22 @@ export class InputManager {
             // Optional: Keep cursor at a fixed distance from the camera
             const dir = cursorWorldPos.sub(this.camera.position).normalize();
             const distance = 5; // Adjust distance as needed
-            this.cursorMesh.position.copy(this.camera.position).add(dir.multiplyScalar(distance));
+            const basePos = this.camera.position.clone().add(dir.multiplyScalar(distance));
+            // Apply offset in camera space (requires projecting offset vector)
+            // This is more complex for perspective. A simpler approach for perspective
+            // might be to adjust the PlaneGeometry itself, but let's try offsetting first.
+            // For now, we'll apply the offset directly, which might not be perfectly accurate
+            // visually in perspective but works for orthographic.
+            // TODO: Refine offset calculation for perspective camera if needed.
+            const cursorWidth = 0.5;
+            const cursorHeight = 0.5;
+            // Applying offset directly in world space - might need adjustment based on camera orientation
+            this.cursorMesh.position.copy(basePos);
+            // A more robust perspective offset requires projecting the offset from screen space
+            // For simplicity, we'll keep the orthographic offset logic for now.
+            // If perspective is primary, consider adjusting geometry center instead.
+            this.cursorMesh.position.x += cursorWidth / 2; // Approximate offset
+            this.cursorMesh.position.y -= cursorHeight / 2; // Approximate offset
         } else {
              console.warn("Unsupported camera type for cursor positioning.");
              return;
