@@ -15,6 +15,7 @@ export class InputManager {
     private cursorMaterial: THREE.MeshPhongMaterial | null = null;
     private hoverRaycaster: THREE.Raycaster = new THREE.Raycaster(); // Raycaster for hover checks
     private isOverClickable: boolean = false;
+    private textureCanvasCache: Map<string, { canvas: HTMLCanvasElement, context: CanvasRenderingContext2D }> = new Map();
 
     // Mouse position in screen coordinates
     private mouseX: number = 0;
@@ -97,11 +98,38 @@ export class InputManager {
         this.clickRaycaster.setFromCamera(this.mouse, this.camera);
 
         // Calculate objects intersecting the picking ray, filtering out non-interactive objects
-        const intersects = this.clickRaycaster.intersectObjects(
+        const allIntersects = this.clickRaycaster.intersectObjects(
             currentScene.threeScene.children.filter(obj =>
-                !obj.userData.isCustomCursor && !obj.userData.isBackground
-            )
+                !obj.userData.isCustomCursor && !obj.userData.isBackground && obj.visible
+            ),
+            true // recursive
         );
+
+        // Filter intersects based on alpha value
+        const validIntersects = allIntersects.filter(intersect => {
+            const uv = intersect.uv;
+            const object = intersect.object as THREE.Mesh; // Assume Mesh for material/texture access
+            if (uv && object.material) {
+                const material = Array.isArray(object.material) ? object.material[0] : object.material;
+                if (material instanceof THREE.MeshBasicMaterial ||
+                    material instanceof THREE.MeshStandardMaterial ||
+                    material instanceof THREE.MeshPhongMaterial ||
+                    material instanceof THREE.SpriteMaterial) { // Check common material types with maps
+                    const texture = material.map;
+                    if (texture && texture.image) {
+                        const alpha = this.getAlphaAtUV(texture, uv);
+                        return alpha > 0.1; // Alpha threshold
+                    }
+                }
+            }
+            // If no texture/uv or alpha is low, consider it a hit on the geometry anyway
+            // unless alpha check is strictly required for all objects.
+            // For now, let's assume if we can't check alpha, it's a valid hit.
+            // If strict alpha checking is needed, return false here.
+            return true; // Fallback: if alpha check fails/not applicable, treat as hit
+        });
+
+        const intersects = validIntersects; // Use the filtered list
 
         if (intersects.length > 0) {
             // Log the name or UUID of the first intersected object
@@ -316,11 +344,45 @@ export class InputManager {
         );
 
         // Check for intersections
-        const intersects = this.hoverRaycaster.intersectObjects(objects, true); // Recursive check
+        const allIntersects = this.hoverRaycaster.intersectObjects(objects, true); // Recursive check
 
-        // Update isOverClickable flag based on whether the first hit is interactive
-        // (You might refine this logic based on specific needs, e.g., checking userData.isClickable)
-        this.isOverClickable = intersects.length > 0;
+        // Find the first intersection that passes the alpha test
+        let firstValidIntersect: THREE.Intersection | null = null;
+        for (const intersect of allIntersects) {
+            const uv = intersect.uv;
+            const object = intersect.object as THREE.Mesh;
+            if (uv && object.material) {
+                 const material = Array.isArray(object.material) ? object.material[0] : object.material;
+                 if (material instanceof THREE.MeshBasicMaterial ||
+                     material instanceof THREE.MeshStandardMaterial ||
+                     material instanceof THREE.MeshPhongMaterial ||
+                     material instanceof THREE.SpriteMaterial) {
+                     const texture = material.map;
+                     if (texture && texture.image) {
+                         const alpha = this.getAlphaAtUV(texture, uv);
+                         if (alpha > 0.1) { // Alpha threshold
+                             firstValidIntersect = intersect;
+                             break; // Found the first valid one
+                         }
+                     } else {
+                         // No texture, treat as valid geometry hit
+                         firstValidIntersect = intersect;
+                         break;
+                     }
+                 } else {
+                      // Unsupported material type for alpha check, treat as valid geometry hit
+                      firstValidIntersect = intersect;
+                      break;
+                 }
+            } else {
+                 // No UV coordinates, treat as valid geometry hit
+                 firstValidIntersect = intersect;
+                 break;
+            }
+        }
+
+        // Update isOverClickable flag
+        this.isOverClickable = firstValidIntersect !== null;
     }
 
     private updateCursorAppearance(): void {
@@ -342,6 +404,66 @@ export class InputManager {
                 this.cursorMaterial.emissiveIntensity = 0;
             }
             this.cursorMaterial.needsUpdate = true;
+        }
+    }
+
+    // Helper function to get alpha value from texture at specific UV coordinates
+    private getAlphaAtUV(texture: THREE.Texture, uv: THREE.Vector2): number {
+        if (!texture.image) {
+            return 1; // Assume opaque if no image data
+        }
+
+        const image = texture.image;
+        const textureKey = texture.uuid; // Use texture UUID as cache key
+
+        let cacheEntry = this.textureCanvasCache.get(textureKey);
+
+        if (!cacheEntry) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d', { willReadFrequently: true }); // Important for getImageData performance
+
+            if (!context) {
+                console.warn("Could not get 2D context for alpha checking.");
+                return 1; // Cannot check alpha
+            }
+
+            canvas.width = image.naturalWidth || image.width;
+            canvas.height = image.naturalHeight || image.height;
+
+            // Draw the image onto the canvas
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+            cacheEntry = { canvas, context };
+            this.textureCanvasCache.set(textureKey, cacheEntry);
+            // Optional: Add logic to clear cache if textures change or are disposed
+        }
+
+        const { context, canvas } = cacheEntry;
+
+        // Flip UV y-coordinate if texture is flipped
+        const u = uv.x;
+        const v = texture.flipY ? 1 - uv.y : uv.y; // Adjust v based on texture.flipY
+
+        // Clamp UV coordinates to [0, 1] range
+        const clampedU = Math.max(0, Math.min(1, u));
+        const clampedV = Math.max(0, Math.min(1, v));
+
+
+        // Map UV coordinates to pixel coordinates
+        const x = Math.floor(clampedU * (canvas.width -1)); // -1 because pixel indices are 0 to width-1
+        const y = Math.floor(clampedV * (canvas.height -1)); // -1 because pixel indices are 0 to height-1
+
+
+        try {
+            // Get pixel data (returns Uint8ClampedArray [R, G, B, A, R, G, B, A, ...])
+            const pixelData = context.getImageData(x, y, 1, 1).data;
+            // Alpha value is the 4th component (index 3), normalized to 0-1 range
+            const alpha = pixelData[3] / 255;
+            return alpha;
+        } catch (e) {
+            // Security errors can happen if the image is cross-origin and CORS isn't set up
+            console.warn(`Could not get pixel data for texture ${textureKey} at (${x}, ${y}). Check CORS policy if image is external.`, e);
+            return 1; // Assume opaque on error
         }
     }
 }
