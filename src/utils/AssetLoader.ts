@@ -25,8 +25,9 @@ export class AssetLoader {
             this.textureLoader.load(
                 cleanPath,
                 (texture) => {
-                    console.log(`AssetLoader: Successfully loaded texture from ${cleanPath}`);
-                    this.textureCache.set(url, texture);
+                    texture.name = cleanPath; // Set the texture name to the path it was loaded from
+                    console.log(`AssetLoader: Successfully loaded texture from ${cleanPath} (Name: ${texture.name})`);
+                    this.textureCache.set(url, texture); // Cache using the original URL key
                     resolve(texture);
                 },
                 undefined,

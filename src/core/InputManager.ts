@@ -91,8 +91,45 @@ export class InputManager {
         if (intersects.length > 0) {
             // Log the name or UUID of the first intersected object
             const firstIntersected = intersects[0].object;
-            const objectId = firstIntersected.name || firstIntersected.uuid;
-            console.log(`InputManager: Raycast hit object: ${objectId}`);
+            const objectName = firstIntersected.name;
+            const objectType = firstIntersected.type;
+            const objectUuid = firstIntersected.uuid;
+            let logMessage = `InputManager: Raycast hit object: `;
+
+            // Add Name or Type
+            if (objectName) {
+                logMessage += `Name='${objectName}'`;
+            } else {
+                logMessage += `Type='${objectType}'`;
+            }
+
+            // Add Texture Name if available
+            try {
+                let textureName: string | undefined = undefined;
+                const objectWithMaterial = firstIntersected as any; // Use 'any' for broader compatibility
+
+                if (objectWithMaterial.material) {
+                    const material = objectWithMaterial.material;
+                    // Handle potential array of materials
+                    const effectiveMaterial = Array.isArray(material) ? material[0] : material;
+
+                    if (effectiveMaterial && effectiveMaterial.map && effectiveMaterial.map.name) {
+                        textureName = effectiveMaterial.map.name;
+                    }
+                }
+
+                if (textureName) {
+                    logMessage += `, Texture='${textureName}'`;
+                } else {
+                     // Optional: Log if texture name couldn't be found for debugging
+                     // console.log(`InputManager: Texture name not found for object ${objectUuid}`);
+                }
+            } catch (e) {
+                console.warn(`InputManager: Error accessing texture name for object ${objectUuid}:`, e);
+            }
+
+            logMessage += ` (UUID: ${objectUuid})`; // Always include UUID for certainty
+            console.log(logMessage);
 
             // Forward intersects to current scene's click handler
             currentScene.handleClick(intersects);
