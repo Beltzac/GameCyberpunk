@@ -171,7 +171,7 @@ export class GameEngine {
 
             // Create cursor mesh
             this.cursorMesh = new THREE.Mesh(
-                new THREE.PlaneGeometry(0.03, 0.03), // Adjust size for better visibility
+                new THREE.PlaneGeometry(0.06, 0.06), // Adjust size for better visibility
                 this.cursorMaterial
             );
             this.cursorMesh.renderOrder = 999; // Ensure it renders on top
@@ -218,7 +218,7 @@ export class GameEngine {
         this.cursorMesh.position.copy(cursorPosition);
 
         // Make cursor face the camera
-        this.cursorMesh.lookAt(this.camera.position);
+        //this.cursorMesh.lookAt(this.camera.position);
 
         // Add cursor to current scene if not already present
         const currentScene = this.sceneManager.currentScene.threeScene;
