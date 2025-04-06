@@ -30,7 +30,6 @@ export class InputManager {
     private setupEventListeners(): void {
         // Example: Click listener
         this.canvas.addEventListener('click', (event) => {
-            this.logCursorPosition();
             this.handleCanvasClick(event);
         });
 
@@ -38,7 +37,6 @@ export class InputManager {
         this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
 
         // Add other listeners as needed (e.g., keydown, keyup)
-        window.addEventListener('keydown', this.handleKeyDown.bind(this));
         // window.addEventListener('keyup', this.handleKeyUp.bind(this));
     }
 
@@ -141,15 +139,7 @@ export class InputManager {
             // console.log("InputManager: Raycast hit nothing.");
         }
 
-        if (this.sceneManager.currentScene && this.sceneManager.currentScene.threeScene) {
-            const cursorMesh = this.sceneManager.currentScene.threeScene.children.find(obj => obj.userData.isCustomCursor);
-            if (cursorMesh) {
-                console.log("Cursor Mesh Position: x=" + cursorMesh.position.x + ", y=" + cursorMesh.position.y + ", z=" + cursorMesh.position.z);
-                console.log("Cursor Mesh Visible: " + cursorMesh.visible);
-            } else {
-                console.log("Cursor Mesh not found in scene.");
-            }
-        }
+
     }
 
     // Example handler for keydown
@@ -180,48 +170,5 @@ export class InputManager {
         // Clear all callbacks
         this.mouseMoveCallbacks = [];
         console.log("InputManager disposed");
-    }
-
-    private handleKeyDown(event: KeyboardEvent): void {
-        if (event.key === 'l') { // 'l' key for logging position
-            this.logCursorPosition();
-        }
-    }
-
-    private logCursorPosition(): void {
-        const rect = this.canvas.getBoundingClientRect();
-
-        // Calculate mouse position in normalized device coordinates (-1 to +1)
-        this.mouse.x = ((this.mouseX - rect.left) / this.canvas.clientWidth) * 2 - 1;
-        this.mouse.y = -((this.mouseY - rect.top) / this.canvas.clientHeight) * 2 + 1;
-
-        let position = "unknown";
-        if (this.mouseX < window.innerWidth / 3 && this.mouseY < window.innerHeight / 3) {
-            position = "top-left";
-        } else if (this.mouseX > 2 * window.innerWidth / 3 && this.mouseY < window.innerHeight / 3) {
-            position = "top-right";
-        } else if (this.mouseX < window.innerWidth / 3 && this.mouseY > 2 * window.innerWidth / 3) {
-            position = "bottom-left";
-        } else if (this.mouseX > 2 * window.innerWidth / 3 && this.mouseY > 2 * window.innerHeight / 3) {
-            position = "bottom-right";
-        } else if (this.mouseX > window.innerWidth / 3 && this.mouseX < 2 * window.innerWidth / 3 && this.mouseY > window.innerHeight / 3 && this.mouseY < 2 * window.innerHeight / 3) {
-            position = "center";
-        }
-
-        console.log("Position: " + position + ", Mouse Coordinates: x=" + this.mouseX + ", y=" + this.mouseY);
-        console.log("Position: " + position + ", NDC Coordinates: x=" + this.mouse.x + ", y=" + this.mouse.y);
-
-        // Access camera from GameEngine
-        if (this.sceneManager.gameEngine) {
-            const camera = this.sceneManager.gameEngine.camera;
-            const raycaster = new THREE.Raycaster();
-            raycaster.setFromCamera(this.mouse, camera);
-            if (this.sceneManager.currentScene) {
-                const intersects = raycaster.intersectObjects(this.sceneManager.currentScene.threeScene.children);
-                if (intersects.length > 0) {
-                    console.log("Position: " + position + ", Intersected object: " + intersects[0].object.name);
-                }
-            }
-        }
     }
 }

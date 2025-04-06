@@ -169,7 +169,6 @@ export class GameEngine {
         try {
             // Use absolute path from project root
             const texture = await this.assetLoader.loadTexture('assets/cursor/cursor_normal.png');
-            console.log("Cursor texture loaded successfully", texture);
             this.cursorTexture = texture;
 
             // Create cursor material with glow effect capability
@@ -190,13 +189,10 @@ export class GameEngine {
                 this.cursorMaterial
             );
             this.cursorMesh.renderOrder = 1000; // Ensure it renders on top
-            console.log("Cursor mesh created successfully");
-            console.log("Cursor Mesh Created: ", this.cursorMesh);
 
             // Make cursor non-interactive for raycasting
             this.cursorMesh.userData.isCustomCursor = true;
             if (this.sceneManager.currentScene) {
-                console.log("Adding cursor to scene", this.cursorMesh);
                 this.sceneManager.currentScene.threeScene.add(this.cursorMesh);
             }
             this.cursorMesh.layers.set(1); // Put cursor on a different layer
@@ -234,8 +230,6 @@ export class GameEngine {
         // Directly set the cursor position based on NDC coordinates
         this.cursorMesh.position.x = x * (this.camera.right); // Scale factor to match the frustum size
         this.cursorMesh.position.y = y * (this.camera.top); // Scale factor to match the frustum size
-        //console.log("Cursor Position: x=" + this.cursorMesh.position.x + ", y=" + this.cursorMesh.position.y + ", z=" + this.cursorMesh.position.z);
-        //console.log("Camera Frustum: left=" + this.camera.left + ", right=" + this.camera.right + ", top=" + this.camera.top + ", bottom=" + this.camera.bottom);
         //console.log("NDC Coordinates: x=" + x + ", y=" + y);
         this.cursorMesh.position.z = -1; // Fixed z position within the camera's view
        // console.log("Cursor Position: x=" + this.cursorMesh.position.x + ", y=" + this.cursorMesh.position.y + ", z=" + this.cursorMesh.position.z);
@@ -266,8 +260,6 @@ export class GameEngine {
         // Add cursor to current scene if not already present
         const currentScene = this.sceneManager.currentScene.threeScene;
         if (!currentScene.children.includes(this.cursorMesh)) {
-        console.log("Scene Children: ", currentScene.children);
-            console.log("Cursor added to scene");
             currentScene.add(this.cursorMesh);
         }
         // Update cursor appearance based on whether it's over a clickable object
