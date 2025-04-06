@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { Scene } from '../core/Scene';
 import { AssetLoader } from '../utils/AssetLoader';
 import { SceneManager } from '../core/SceneManager';
+import { Easing } from '../utils/Easing';
 
 export class Cena2RuaScene extends Scene {
     private assetLoader: AssetLoader;
@@ -25,7 +26,12 @@ export class Cena2RuaScene extends Scene {
     });
     private animationState: 'idle' | 'handMovingDown' | 'phoneMovingUp' | 'phoneIdle' = 'idle';
     private timeAccumulator = 0;
-    private buttonOffsets: number[] = [0, 0, 0];
+    private buttonTimeAccumulator = 0;
+    private buttonOffsets: number[] = [];
+    private animationStartTime = 0;
+    private animationDuration = 1; // seconds
+
+    private buttonAnimationSpeed = 3; // Even slower floating speed
 
     constructor(assetLoader: AssetLoader, sceneManager: SceneManager) {
         super();
@@ -38,17 +44,18 @@ export class Cena2RuaScene extends Scene {
         console.log("Cena2RuaScene initializing...");
 
         try {
+            this.buttonOffsets = this.thoughtButtons.map(() => Math.random() * Math.PI * 2);
             // Load all required assets
             const backgroundTexture = await this.assetLoader.loadTexture('assets/cena_2_rua/background.png');
             this.handTexture = await this.assetLoader.loadTexture('assets/cena_2_rua/mao.png');
             this.phoneTexture = await this.assetLoader.loadTexture('assets/cena_2_rua/celular2.png');
 
-           // Load thought button textures
-           this.thoughtButtonTextures = [
-               await this.assetLoader.loadTexture('assets/cena_2_rua/thought1.png'),
-               await this.assetLoader.loadTexture('assets/cena_2_rua/thought2.png'),
-               await this.assetLoader.loadTexture('assets/cena_2_rua/thought3.png')
-           ];
+            // Load thought button textures
+            this.thoughtButtonTextures = [
+                await this.assetLoader.loadTexture('assets/cena_2_rua/thought1.png'),
+                await this.assetLoader.loadTexture('assets/cena_2_rua/thought2.png'),
+                await this.assetLoader.loadTexture('assets/cena_2_rua/thought3.png')
+            ];
 
             // Create background sprite (full screen, non-interactive)
             const backgroundMaterial = new THREE.SpriteMaterial({ map: backgroundTexture });
@@ -71,22 +78,22 @@ export class Cena2RuaScene extends Scene {
             // Setup rain particles
             this.setupRain();
 
-           // Create thought buttons
-           for (let i = 0; i < this.thoughtButtonTextures.length; i++) {
-               const material = new THREE.SpriteMaterial({
-                   map: this.thoughtButtonTextures[i],
-                   transparent: true
-               });
-               const button = new THREE.Sprite(material);
-               button.scale.set(2, 2, 1);
-               button.position.set(-5, 2 - (i * 2), 0.1); // Left side, vertically stacked
-               button.name = `ThoughtButton${i+1}`;
-               this.thoughtButtons.push(button);
-               this.threeScene.add(button);
-           }
+            // Create thought buttons
+            for (let i = 0; i < this.thoughtButtonTextures.length; i++) {
+                const material = new THREE.SpriteMaterial({
+                    map: this.thoughtButtonTextures[i],
+                    transparent: true
+                });
+                const button = new THREE.Sprite(material);
+                button.scale.set(2, 2, 1);
+                button.position.set(-5, 4 - (i * 1.5), 0.1); // Left side, vertically stacked
+                button.name = `ThoughtButton${i + 1}`;
+                this.thoughtButtons.push(button);
+                this.threeScene.add(button);
+            }
 
-           // Add ambient light with cyberpunk colors
-           const ambientLight = new THREE.AmbientLight(0x404040);
+            // Add ambient light with cyberpunk colors
+            const ambientLight = new THREE.AmbientLight(0x404040);
             this.threeScene.add(ambientLight);
 
             // Add colored lights for cyberpunk effect
@@ -137,39 +144,46 @@ export class Cena2RuaScene extends Scene {
         // Animate hand bobbing
         if (this.handSprite) {
             this.timeAccumulator += deltaTime;
+            this.buttonTimeAccumulator += deltaTime * this.buttonAnimationSpeed;
 
             // Handle animation states
             if (this.animationState === 'handMovingDown') {
-                // Animate hand down
-                this.handSprite.position.y -= deltaTime * 5;
-                if (this.handSprite.position.y <= -7) {
+                // Animate hand down with easing
+                const elapsed = this.timeAccumulator - this.animationStartTime;
+                const progress = Math.min(elapsed / this.animationDuration, 1);
+                this.handSprite.position.y = -2 - Easing.easeInQuad(progress) * 5;
+                if (progress >= 1) {
                     this.handSprite.position.y = -7;
                     this.animationState = 'phoneMovingUp';
+                    this.animationStartTime = this.timeAccumulator;
                     // Make phone visible
                     if (this.phoneSprite?.material) {
                         (this.phoneSprite.material as THREE.SpriteMaterial).opacity = 1;
                     }
                 }
             } else if (this.animationState === 'phoneMovingUp' && this.phoneSprite) {
-                // Animate phone up
-                this.phoneSprite.position.y += deltaTime * 5;
-                if (this.phoneSprite.position.y >= 0) {
+                // Animate phone up with easing
+                const elapsed = this.timeAccumulator - this.animationStartTime;
+                const progress = Math.min(elapsed / this.animationDuration, 1);
+                this.phoneSprite.position.y = -5 + Easing.easeOutQuad(progress) * 5;
+                if (progress >= 1) {
                     this.phoneSprite.position.y = 0;
                     this.animationState = 'phoneIdle';
                 }
             } else if (this.animationState === 'idle') {
                 // Normal hand bobbing animation
-                this.handSprite.position.y = -1.5 + Math.sin(this.timeAccumulator * 5) * 0.1;
+                const bobProgress = Easing.easeInOutSine(Math.sin(this.timeAccumulator * 5) * 0.5 + 0.5);
+                this.handSprite.position.y = -1.5 + bobProgress * 0.2 - 0.1;
             }
 
-           // Animate thought buttons with random floating
-           for (let i = 0; i < this.thoughtButtons.length; i++) {
-               this.buttonOffsets[i] = this.buttonOffsets[i] || Math.random() * Math.PI * 2;
-               const button = this.thoughtButtons[i];
-               const offset = this.buttonOffsets[i];
-               button.position.x = -7 + Math.sin(this.timeAccumulator * 2 + offset) * 0.2;
-               button.position.y = (3 - (i * 1.5)) + Math.cos(this.timeAccumulator * 3 + offset) * 0.1;
-           }
+            // Animate thought buttons with random floating
+            for (let i = 0; i < this.thoughtButtons.length; i++) {
+                this.buttonOffsets[i] = this.buttonOffsets[i] || Math.random() * Math.PI * 2;
+                const button = this.thoughtButtons[i];
+                const offset = this.buttonOffsets[i];
+                button.position.x = -7 + Math.sin(this.timeAccumulator * 2 + offset) * 0.2;
+                button.position.y = (3 - (i * 1.5)) + Math.cos(this.timeAccumulator * 3 + offset) * 0.1;
+            }
         }
     }
 
@@ -184,6 +198,7 @@ export class Cena2RuaScene extends Scene {
         if (clickedObject.name === "Hand" && this.handSprite && this.animationState === 'idle') {
             console.log("Hand clicked - starting hand animation");
             this.animationState = 'handMovingDown';
+            this.animationStartTime = this.timeAccumulator;
 
             // Create phone sprite at bottom (hidden initially)
             if (this.phoneTexture) {
@@ -197,14 +212,12 @@ export class Cena2RuaScene extends Scene {
                 this.phoneSprite.position.set(0, -5, 0.2);
                 this.threeScene.add(this.phoneSprite);
             }
-       } else if (clickedObject.name.startsWith("ThoughtButton")) {
-           const buttonIndex = parseInt(clickedObject.name.replace("ThoughtButton", "")) - 1;
-           console.log(`Thought button ${buttonIndex + 1} clicked`);
-           // Add thought-specific logic here later
+        } else if (clickedObject.name.startsWith("ThoughtButton")) {
+            const buttonIndex = parseInt(clickedObject.name.replace("ThoughtButton", "")) - 1;
+            console.log(`Thought button ${buttonIndex + 1} clicked`);
+            // Add thought-specific logic here later
 
-           if (this.sceneManager) {
-                this.sceneManager.changeScene('cena1_trabalho');
-           }
+            this.sceneManager.changeScene('cena1_trabalho');
         }
     }
 }

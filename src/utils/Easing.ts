@@ -67,4 +67,9 @@ export class Easing {
         if (t < 1) return -0.5 * Math.pow(2, 10 * (t - 1)) * Math.sin((t - 1.1) * 5 * Math.PI);
         return 0.5 * Math.pow(2, -10 * (t - 1)) * Math.sin((t - 1.1) * 5 * Math.PI) + 1;
     }
+
+    // Sine
+    static easeInOutSine(t: number): number {
+        return -(Math.cos(Math.PI * t) - 1) / 2;
+    }
 }
