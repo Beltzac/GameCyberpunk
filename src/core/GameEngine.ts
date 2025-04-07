@@ -31,7 +31,7 @@ export class GameEngine {
             canvas: this.canvas,
             antialias: true, // Enable anti-aliasing
         });
-        this.renderer.localClippingEnabled = true;
+        this.renderer.localClippingEnabled = true; // Re-enable for post clipping
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(window.devicePixelRatio);
         // Configure renderer further if needed (e.g., shadow maps, output encoding)

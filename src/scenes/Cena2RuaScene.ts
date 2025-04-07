@@ -24,12 +24,16 @@ export class Cena2RuaScene extends Scene {
         color: 0xaaaaaa,
         size: 0.1,
         transparent: true,
-        opacity: 0.8
+        opacity: 0.7,
+        depthTest: false,
+        blending: THREE.NormalBlending,
+        clippingPlanes: [] // Explicitly disable clipping for rain (use empty array)
     });
     private animationState: 'idle' | 'handMovingDown' | 'phoneMovingUp' | 'phoneIdle' = 'idle';
     private timeAccumulator = 0;
     private buttonTimeAccumulator = 0;
     private buttonOffsets: number[] = [];
+    private rainVelocities: Float32Array | null = null;
     private animationStartTime = 0;
     private animationDuration = 1; // seconds
 private buttonAnimationSpeed = 3; // Even slower floating speed
@@ -108,6 +112,7 @@ private currentPostIndex: number = 0;
             this.threeScene.add(this.handSprite);
 
             // Setup rain particles
+
             this.setupRain();
 
             // Create thought buttons
@@ -143,31 +148,62 @@ private currentPostIndex: number = 0;
             throw error;
         }
     }
+private setupRain(): void {
+    const particleCount = 1500; // Increased particle count for denser rain
+    const positions = new Float32Array(particleCount * 3);
+    this.rainVelocities = new Float32Array(particleCount * 3); // Initialize velocities array
 
-    private setupRain(): void {
-        const particleCount = 1000;
-        const positions = new Float32Array(particleCount * 3);
+    const spawnAreaWidth = 15; // Reduced width
+    const spawnAreaDepth = 15; // Reduced depth
+    const spawnHeight = 10; // Reduced initial height
+    const baseFallSpeed = 0.15; // Reverted fall speed
+    const speedVariation = 0.05; // Reverted variation
+    const windSpeed = 0.02; // Reverted wind speed
 
-        for (let i = 0; i < particleCount; i++) {
-            positions[i * 3] = (Math.random() - 0.5) * 20; // x
-            positions[i * 3 + 1] = Math.random() * 10; // y
-            positions[i * 3 + 2] = (Math.random() - 0.5) * 20; // z
-        }
+    for (let i = 0; i < particleCount; i++) {
+        // Initial position
+        positions[i * 3] = (Math.random() - 0.5) * spawnAreaWidth; // x
+        positions[i * 3 + 1] = Math.random() * spawnHeight; // y (start higher)
+        positions[i * 3 + 2] = 0; // z - Force to 0 plane
 
-        this.rainGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        this.rainParticles = new THREE.Points(this.rainGeometry, this.rainMaterial);
-        this.rainParticles.userData.isBackground = true; // Mark rain as non-interactive
-        this.threeScene.add(this.rainParticles);
+        // Initial velocity
+        this.rainVelocities[i * 3] = windSpeed; // x velocity (wind)
+        this.rainVelocities[i * 3 + 1] = -(baseFallSpeed + Math.random() * speedVariation); // y velocity (falling speed variation)
+        this.rainVelocities[i * 3 + 2] = 0; // z velocity - Keep at 0
     }
 
+    this.rainGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    this.rainParticles = new THREE.Points(this.rainGeometry, this.rainMaterial);
+    this.rainParticles.position.z = 0.01; // Reset Z position slightly in front
+    // Removed explicit layer setting
+    this.rainParticles.renderOrder = 999; // Render rain on top
+    this.rainParticles.userData.isBackground = true; // Mark rain as non-interactive
+    // Removed debug log
+    this.threeScene.add(this.rainParticles);
+}
+
     update(deltaTime: number): void {
-        // Animate rain
-        if (this.rainParticles) {
+        if (this.rainParticles && this.rainVelocities) {
             const positions = this.rainGeometry.attributes.position.array as Float32Array;
+            const velocities = this.rainVelocities;
+            const fallLimit = -6; // Adjusted lower limit
+            const resetHeight = 10; // Adjusted reset height
+            const spawnAreaWidth = 15; // Match reduced setup width
+
+            const effectiveDeltaTime = Math.min(deltaTime, 0.1); // Clamp deltaTime to avoid large jumps
+
             for (let i = 0; i < positions.length; i += 3) {
-                positions[i + 1] -= 0.1; // Move rain down
-                if (positions[i + 1] < -5) {
-                    positions[i + 1] = 10; // Reset to top
+                // Update position based on velocity and deltaTime
+                positions[i] += velocities[i] * effectiveDeltaTime * 60; // Scale velocity by deltaTime (assuming base velocity is for 60fps)
+                positions[i + 1] += velocities[i + 1] * effectiveDeltaTime * 60; // Scale velocity by deltaTime
+                // positions[i + 2] = 0; // Ensure z stays 0 if velocity was non-zero
+
+                // Reset particle if it falls below the limit
+                if (positions[i + 1] < fallLimit) {
+                    positions[i + 1] = resetHeight + Math.random() * 5; // Reset y to top with some variation
+                    positions[i] = (Math.random() - 0.5) * spawnAreaWidth; // Reset x to a new random horizontal position
+                    // Ensure z remains 0 on reset
+                    positions[i + 2] = 0;
                 }
             }
             this.rainGeometry.attributes.position.needsUpdate = true;
