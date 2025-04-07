@@ -35,8 +35,8 @@ export class InputManager {
         this.mouse = new THREE.Vector2();
         this.setupEventListeners();
         this.loadCursorTexture().then(() => {
-             // Initial position update after texture loads
-             this.updateCursorPosition();
+            // Initial position update after texture loads
+            this.updateCursorPosition();
         });
         console.log("InputManager initialized with Camera, SceneManager, and AssetLoader");
     }
@@ -166,8 +166,8 @@ export class InputManager {
                 if (textureName) {
                     logMessage += `, Texture='${textureName}'`;
                 } else {
-                     // Optional: Log if texture name couldn't be found for debugging
-                     // console.log(`InputManager: Texture name not found for object ${objectUuid}`);
+                    // Optional: Log if texture name couldn't be found for debugging
+                    // console.log(`InputManager: Texture name not found for object ${objectUuid}`);
                 }
             } catch (e) {
                 console.warn(`InputManager: Error accessing texture name for object ${objectUuid}:`, e);
@@ -180,8 +180,8 @@ export class InputManager {
             currentScene.handleClick(intersects);
 
             // Create click animation at the intersection point
-            const clickPoint = intersects[0].point; // Get world coordinates of the click
-            this.createClickAnimation(clickPoint);
+            // Create click animation at the NDC position of the click
+            this.createClickAnimation(this.mouse); // Pass the NDC mouse vector
 
         } else {
             // Optional: Log if nothing was hit
@@ -201,7 +201,7 @@ export class InputManager {
     //     // Notify relevant systems
     // }
 
-     // Example handler for mouse move
+    // Example handler for mouse move
     // private handleMouseMove(event: MouseEvent): void {
     //     const rect = this.canvas.getBoundingClientRect();
     //     const x = event.clientX - rect.left;
@@ -225,9 +225,9 @@ export class InputManager {
         if (this.cursorMesh && this.sceneManager.currentScene) {
             this.sceneManager.currentScene.threeScene.remove(this.cursorMesh);
         }
-         // Restore system cursor
-         document.body.style.cursor = 'auto';
-         this.canvas.style.cursor = 'auto';
+        // Restore system cursor
+        document.body.style.cursor = 'auto';
+        this.canvas.style.cursor = 'auto';
 
         console.log("InputManager disposed");
     }
@@ -335,16 +335,16 @@ export class InputManager {
             this.cursorMesh.position.x += cursorWidth / 2; // Approximate offset
             this.cursorMesh.position.y -= cursorHeight / 2; // Approximate offset
         } else {
-             console.warn("Unsupported camera type for cursor positioning.");
-             return;
+            console.warn("Unsupported camera type for cursor positioning.");
+            return;
         }
 
 
         // Ensure cursor is in the current scene (might have been removed during scene change)
         const currentScene = this.sceneManager.currentScene.threeScene;
         if (!currentScene.children.includes(this.cursorMesh)) {
-             console.log("Re-adding cursor to scene:", this.sceneManager.currentScene.constructor.name);
-             currentScene.add(this.cursorMesh);
+            console.log("Re-adding cursor to scene:", this.sceneManager.currentScene.constructor.name);
+            currentScene.add(this.cursorMesh);
         }
 
 
@@ -377,225 +377,241 @@ export class InputManager {
             const uv = intersect.uv;
             const object = intersect.object as THREE.Mesh;
             if (uv && object.material) {
-                 const material = Array.isArray(object.material) ? object.material[0] : object.material;
-                 if (material instanceof THREE.MeshBasicMaterial ||
-                     material instanceof THREE.MeshStandardMaterial ||
-                     material instanceof THREE.MeshPhongMaterial ||
-                     material instanceof THREE.SpriteMaterial) {
-                     const texture = material.map;
-                     if (texture && texture.image) {
-                         const alpha = this.getAlphaAtUV(texture, uv);
-                         if (alpha > 0.1) { // Alpha threshold
-                             firstValidIntersect = intersect;
-                             break; // Found the first valid one
-                         }
-                     } else {
-                         // No texture, treat as valid geometry hit
-                         firstValidIntersect = intersect;
-                         break;
-                     }
-                 } else {
-                      // Unsupported material type for alpha check, treat as valid geometry hit
-                      firstValidIntersect = intersect;
-                      break;
-                 }
+                const material = Array.isArray(object.material) ? object.material[0] : object.material;
+                if (material instanceof THREE.MeshBasicMaterial ||
+                    material instanceof THREE.MeshStandardMaterial ||
+                    material instanceof THREE.MeshPhongMaterial ||
+                    material instanceof THREE.SpriteMaterial) {
+                    const texture = material.map;
+                    if (texture && texture.image) {
+                        const alpha = this.getAlphaAtUV(texture, uv);
+                        if (alpha > 0.1) { // Alpha threshold
+                            firstValidIntersect = intersect;
+                            break; // Found the first valid one
+                        }
+                    } else {
+                        // No texture, treat as valid geometry hit
+                        firstValidIntersect = intersect;
+                        break;
+                    }
+                } else {
+                    // Unsupported material type for alpha check, treat as valid geometry hit
+                    firstValidIntersect = intersect;
+                    break;
+                }
             } else {
-                 // No UV coordinates, treat as valid geometry hit
-                 firstValidIntersect = intersect;
-                 break;
+                // No UV coordinates, treat as valid geometry hit
+                firstValidIntersect = intersect;
+                break;
             }
         }
-// Update isOverClickable flag
-this.isOverClickable = firstValidIntersect !== null;
-} // <-- End of checkCursorOverClickable
+        // Update isOverClickable flag
+        this.isOverClickable = firstValidIntersect !== null;
+    } // <-- End of checkCursorOverClickable
 
-private updateCursorAppearance(): void {
-if (!this.cursorMaterial) return;
+    private updateCursorAppearance(): void {
+        if (!this.cursorMaterial) return;
 
-const needsUpdate =
-    (this.isOverClickable && this.cursorMaterial.emissiveIntensity === 0) ||
-    (!this.isOverClickable && this.cursorMaterial.emissiveIntensity > 0);
+        const needsUpdate =
+            (this.isOverClickable && this.cursorMaterial.emissiveIntensity === 0) ||
+            (!this.isOverClickable && this.cursorMaterial.emissiveIntensity > 0);
 
-if (needsUpdate) {
-     console.log(`InputManager: Updating cursor appearance. isOverClickable: ${this.isOverClickable}`); // Add log for debugging
-    if (this.isOverClickable) {
-        this.cursorMaterial.color.set(0xffff00); // Yellow
-        this.cursorMaterial.emissive.set(0xffff00);
-        this.cursorMaterial.emissiveIntensity = 0.5;
-    } else {
-        this.cursorMaterial.color.set(0xffffff); // White
-        this.cursorMaterial.emissive.set(0x000000);
-        this.cursorMaterial.emissiveIntensity = 0;
-    }
-    this.cursorMaterial.needsUpdate = true;
-}
-} // <-- End of updateCursorAppearance
+        if (needsUpdate) {
+            console.log(`InputManager: Updating cursor appearance. isOverClickable: ${this.isOverClickable}`); // Add log for debugging
+            if (this.isOverClickable) {
+                this.cursorMaterial.color.set(0xffff00); // Yellow
+                this.cursorMaterial.emissive.set(0xffff00);
+                this.cursorMaterial.emissiveIntensity = 0.5;
+            } else {
+                this.cursorMaterial.color.set(0xffffff); // White
+                this.cursorMaterial.emissive.set(0x000000);
+                this.cursorMaterial.emissiveIntensity = 0;
+            }
+            this.cursorMaterial.needsUpdate = true;
+        }
+    } // <-- End of updateCursorAppearance
 
-// Helper function to get alpha value from texture at specific UV coordinates
-private getAlphaAtUV(texture: THREE.Texture, uv: THREE.Vector2): number {
-if (!texture.image) {
-    return 1; // Assume opaque if no image data
-}
+    // Helper function to get alpha value from texture at specific UV coordinates
+    private getAlphaAtUV(texture: THREE.Texture, uv: THREE.Vector2): number {
+        if (!texture.image) {
+            return 1; // Assume opaque if no image data
+        }
 
-const image = texture.image;
-const textureKey = texture.uuid; // Use texture UUID as cache key
+        const image = texture.image;
+        const textureKey = texture.uuid; // Use texture UUID as cache key
 
-let cacheEntry = this.textureCanvasCache.get(textureKey);
+        let cacheEntry = this.textureCanvasCache.get(textureKey);
 
-if (!cacheEntry) {
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d', { willReadFrequently: true }); // Important for getImageData performance
+        if (!cacheEntry) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d', { willReadFrequently: true }); // Important for getImageData performance
 
-    if (!context) {
-        console.warn("Could not get 2D context for alpha checking.");
-        return 1; // Cannot check alpha
-    }
+            if (!context) {
+                console.warn("Could not get 2D context for alpha checking.");
+                return 1; // Cannot check alpha
+            }
 
-    canvas.width = image.naturalWidth || image.width;
-    canvas.height = image.naturalHeight || image.height;
+            canvas.width = image.naturalWidth || image.width;
+            canvas.height = image.naturalHeight || image.height;
 
-    // Draw the image onto the canvas
-    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            // Draw the image onto the canvas
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
-    cacheEntry = { canvas, context };
-    this.textureCanvasCache.set(textureKey, cacheEntry);
-    // Optional: Add logic to clear cache if textures change or are disposed
-}
+            cacheEntry = { canvas, context };
+            this.textureCanvasCache.set(textureKey, cacheEntry);
+            // Optional: Add logic to clear cache if textures change or are disposed
+        }
 
-const { context, canvas } = cacheEntry;
+        const { context, canvas } = cacheEntry;
 
-// Flip UV y-coordinate if texture is flipped
-const u = uv.x;
-const v = texture.flipY ? 1 - uv.y : uv.y; // Adjust v based on texture.flipY
+        // Flip UV y-coordinate if texture is flipped
+        const u = uv.x;
+        const v = texture.flipY ? 1 - uv.y : uv.y; // Adjust v based on texture.flipY
 
-// Clamp UV coordinates to [0, 1] range
-const clampedU = Math.max(0, Math.min(1, u));
-const clampedV = Math.max(0, Math.min(1, v));
-
-
-// Map UV coordinates to pixel coordinates
-const x = Math.floor(clampedU * (canvas.width -1)); // -1 because pixel indices are 0 to width-1
-const y = Math.floor(clampedV * (canvas.height -1)); // -1 because pixel indices are 0 to height-1
+        // Clamp UV coordinates to [0, 1] range
+        const clampedU = Math.max(0, Math.min(1, u));
+        const clampedV = Math.max(0, Math.min(1, v));
 
 
-try {
-    // Get pixel data (returns Uint8ClampedArray [R, G, B, A, R, G, B, A, ...])
-    const pixelData = context.getImageData(x, y, 1, 1).data;
-    // Alpha value is the 4th component (index 3), normalized to 0-1 range
-    const alpha = pixelData[3] / 255;
-    return alpha;
-} catch (e) {
-    // Security errors can happen if the image is cross-origin and CORS isn't set up
-    // console.warn(`Could not get pixel data for texture ${textureKey} at (${x}, ${y}). Check CORS policy if image is external.`, e); // Reduce noise
-    return 1; // Assume opaque on error
-}
-} // <-- End of getAlphaAtUV
-
-// --- Click Animation Logic ---
-
-// Update active animations
-public update(deltaTime: number): void {
-const now = performance.now() / 1000; // Current time in seconds
-const animationsToRemove: number[] = [];
-const currentScene = this.sceneManager.currentScene?.threeScene;
-
-if (!currentScene) return; // No scene to update animations in
-
-this.activeClickAnimations.forEach((anim, index) => {
-    const elapsedTime = now - anim.startTime;
-    let progress = Math.min(elapsedTime / anim.duration, 1); // Clamp progress to [0, 1]
-
-    // Apply easing
-    const easedProgress = anim.easingFunc(progress);
-
-    // Interpolate scale
-    const currentScale = anim.startScale + (anim.endScale - anim.startScale) * easedProgress;
-    anim.mesh.scale.set(currentScale, currentScale, currentScale);
-
-    // Interpolate opacity
-    const currentOpacity = anim.startOpacity + (anim.endOpacity - anim.startOpacity) * easedProgress;
-    if (anim.mesh.material instanceof THREE.MeshBasicMaterial ||
-        anim.mesh.material instanceof THREE.MeshStandardMaterial ||
-        anim.mesh.material instanceof THREE.MeshPhongMaterial) {
-         // Ensure material is transparent and update opacity
-         if (!anim.mesh.material.transparent) {
-             anim.mesh.material.transparent = true;
-         }
-         anim.mesh.material.opacity = currentOpacity;
-         anim.mesh.material.needsUpdate = true; // Important for opacity changes
-    }
+        // Map UV coordinates to pixel coordinates
+        const x = Math.floor(clampedU * (canvas.width - 1)); // -1 because pixel indices are 0 to width-1
+        const y = Math.floor(clampedV * (canvas.height - 1)); // -1 because pixel indices are 0 to height-1
 
 
-    // Check if animation is finished
-    if (progress >= 1) {
-        animationsToRemove.push(index);
-    }
-});
+        try {
+            // Get pixel data (returns Uint8ClampedArray [R, G, B, A, R, G, B, A, ...])
+            const pixelData = context.getImageData(x, y, 1, 1).data;
+            // Alpha value is the 4th component (index 3), normalized to 0-1 range
+            const alpha = pixelData[3] / 255;
+            return alpha;
+        } catch (e) {
+            // Security errors can happen if the image is cross-origin and CORS isn't set up
+            // console.warn(`Could not get pixel data for texture ${textureKey} at (${x}, ${y}). Check CORS policy if image is external.`, e); // Reduce noise
+            return 1; // Assume opaque on error
+        }
+    } // <-- End of getAlphaAtUV
 
-// Remove completed animations (iterate backwards to avoid index issues)
-for (let i = animationsToRemove.length - 1; i >= 0; i--) {
-    const indexToRemove = animationsToRemove[i];
-    const animToRemove = this.activeClickAnimations[indexToRemove];
+    // --- Click Animation Logic ---
 
-    // Remove mesh from scene
-    currentScene.remove(animToRemove.mesh);
+    // Update active animations
+    public update(deltaTime: number): void {
+        const now = performance.now() / 1000; // Current time in seconds
+        const animationsToRemove: number[] = [];
+        const currentScene = this.sceneManager.currentScene?.threeScene;
 
-    // Dispose geometry and material to free memory
-    animToRemove.mesh.geometry.dispose();
-    if (Array.isArray(animToRemove.mesh.material)) {
-         animToRemove.mesh.material.forEach(m => m.dispose());
-    } else {
-         animToRemove.mesh.material.dispose();
-    }
+        if (!currentScene) return; // No scene to update animations in
+
+        this.activeClickAnimations.forEach((anim, index) => {
+            const elapsedTime = now - anim.startTime;
+            let progress = Math.min(elapsedTime / anim.duration, 1); // Clamp progress to [0, 1]
+
+            // Apply easing
+            const easedProgress = anim.easingFunc(progress);
+
+            // Interpolate scale
+            const currentScale = anim.startScale + (anim.endScale - anim.startScale) * easedProgress;
+            anim.mesh.scale.set(currentScale, currentScale, currentScale);
+
+            // Interpolate opacity
+            const currentOpacity = anim.startOpacity + (anim.endOpacity - anim.startOpacity) * easedProgress;
+            if (anim.mesh.material instanceof THREE.MeshBasicMaterial ||
+                anim.mesh.material instanceof THREE.MeshStandardMaterial ||
+                anim.mesh.material instanceof THREE.MeshPhongMaterial) {
+                // Ensure material is transparent and update opacity
+                if (!anim.mesh.material.transparent) {
+                    anim.mesh.material.transparent = true;
+                }
+                anim.mesh.material.opacity = currentOpacity;
+                anim.mesh.material.needsUpdate = true; // Important for opacity changes
+            }
 
 
-    // Remove from active animations array
-    this.activeClickAnimations.splice(indexToRemove, 1);
-}
-} // <-- End of update
+            // Check if animation is finished
+            if (progress >= 1) {
+                animationsToRemove.push(index);
+            }
+        });
 
-// Creates the click visual effect
-private createClickAnimation(position: THREE.Vector3): void {
-if (!this.sceneManager.currentScene) return;
+        // Remove completed animations (iterate backwards to avoid index issues)
+        for (let i = animationsToRemove.length - 1; i >= 0; i--) {
+            const indexToRemove = animationsToRemove[i];
+            const animToRemove = this.activeClickAnimations[indexToRemove];
 
-const geometry = new THREE.RingGeometry(
-    0.01, // innerRadius - start small
-    0.05, // outerRadius - start small
-    32    // thetaSegments
-);
-const material = new THREE.MeshBasicMaterial({
-    color: 0x00ffff, // Cyan color
-    opacity: 0.8,
-    transparent: true,
-    side: THREE.DoubleSide,
-    depthTest: false // Render on top without depth testing issues
-});
-const ringMesh = new THREE.Mesh(geometry, material);
+            // Remove mesh from scene
+            currentScene.remove(animToRemove.mesh);
 
-// Position the ring at the click point
-ringMesh.position.copy(position);
+            // Dispose geometry and material to free memory
+            animToRemove.mesh.geometry.dispose();
+            if (Array.isArray(animToRemove.mesh.material)) {
+                animToRemove.mesh.material.forEach(m => m.dispose());
+            } else {
+                animToRemove.mesh.material.dispose();
+            }
 
-// Make the ring face the camera (simple approach for orthographic)
-// For perspective, more complex orientation might be needed if clicks aren't on a plane facing the camera
-ringMesh.lookAt(this.camera.position);
 
-ringMesh.renderOrder = 999; // Render below cursor but above most other things
+            // Remove from active animations array
+            this.activeClickAnimations.splice(indexToRemove, 1);
+        }
+    } // <-- End of update
 
-// Add to scene
-this.sceneManager.currentScene.threeScene.add(ringMesh);
+    // Creates the click visual effect at a specific screen position (NDC)
+    private createClickAnimation(mouseNDC: THREE.Vector2): void {
+        if (!this.sceneManager.currentScene) return;
 
-// Define animation parameters
-const animationData = {
-    mesh: ringMesh,
-    startTime: performance.now() / 1000, // Start time in seconds
-    duration: 0.4, // Animation duration in seconds
-    startScale: 1.0,
-    endScale: 8.0, // Expand outwards
-    startOpacity: 0.8,
-    endOpacity: 0.0, // Fade out
-    easingFunc: Easing.easeOutQuad // Use an easing function
-};
+        const geometry = new THREE.RingGeometry(
+            0.01, // innerRadius - start small
+            0.05, // outerRadius - start small
+            32    // thetaSegments
+        );
+        const material = new THREE.MeshBasicMaterial({
+            color: 0x00ffff, // Cyan color
+            opacity: 0.8,
+            transparent: true,
+            side: THREE.DoubleSide,
+            depthTest: false // Render on top without depth testing issues
+        });
+        const ringMesh = new THREE.Mesh(geometry, material);
 
-this.activeClickAnimations.push(animationData);
-} // <-- End of createClickAnimation
+        // Position the ring in screen space using NDC, similar to the cursor
+        if (this.camera instanceof THREE.OrthographicCamera) {
+            ringMesh.position.x = mouseNDC.x * this.camera.right;
+            ringMesh.position.y = mouseNDC.y * this.camera.top;
+            ringMesh.position.z = -1.5; // Slightly behind the cursor
+        } else if (this.camera instanceof THREE.PerspectiveCamera) {
+            // Unproject NDC to a point near the camera for perspective
+            const ringWorldPos = new THREE.Vector3(mouseNDC.x, mouseNDC.y, 0.5); // Z=0.5 is between near/far
+            ringWorldPos.unproject(this.camera);
+            const dir = ringWorldPos.sub(this.camera.position).normalize();
+            const distance = 4.5; // Slightly behind cursor distance
+            ringMesh.position.copy(this.camera.position).add(dir.multiplyScalar(distance));
+            // For perspective, we might still want it to face the camera plane
+            ringMesh.quaternion.copy(this.camera.quaternion); // Align with camera rotation
+        } else {
+            console.warn("Unsupported camera type for click animation positioning.");
+            // Fallback position (might not look right)
+            ringMesh.position.set(0, 0, -1.5);
+        }
+
+        // Do NOT use lookAt - keep it parallel to the screen plane
+
+        ringMesh.renderOrder = 999; // Render below cursor (1000) but above most other things
+        ringMesh.layers.set(1); // Put animation on the same layer as the cursor
+
+        // Add to scene
+        this.sceneManager.currentScene.threeScene.add(ringMesh);
+
+        // Define animation parameters
+        const animationData = {
+            mesh: ringMesh,
+            startTime: performance.now() / 1000, // Start time in seconds
+            duration: 0.4, // Animation duration in seconds
+            startScale: 1.0,
+            endScale: 8.0, // Expand outwards
+            startOpacity: 0.8,
+            endOpacity: 0.0, // Fade out
+            easingFunc: Easing.easeOutQuad // Use an easing function
+        };
+
+        this.activeClickAnimations.push(animationData);
+    } // <-- End of createClickAnimation
 } // <-- End of class InputManager
