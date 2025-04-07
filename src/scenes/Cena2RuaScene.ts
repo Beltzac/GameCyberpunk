@@ -39,6 +39,15 @@ private postTextures: THREE.Texture[] = [];
 private postSprites: THREE.Sprite[] = [];
 private currentPostIndex: number = 0;
 // <<< END ADDED >>>
+    // <<< ADDED: Properties for post scrolling >>>
+    private postContainer: THREE.Group | null = null;
+    private isScrollingPosts: boolean = false;
+    private scrollStartY: number = 0;
+    private scrollTargetY: number = 0;
+    private scrollStartTime: number = 0;
+    private scrollDuration: number = 0.5; // seconds
+    private targetPostIndex: number = 0;
+    // <<< END ADDED >>>
 
 
     constructor(gameEngine: GameEngine, assetLoader: AssetLoader, sceneManager: SceneManager) {
@@ -190,9 +199,20 @@ private currentPostIndex: number = 0;
                 if (progress >= 1) {
                     this.phoneSprite.position.y = 0;
                    this.animationState = 'phoneIdle';
-                   // <<< ADDED: Show current post when phone becomes idle >>>
-                   this.showCurrentPost();
-                   // <<< END ADDED >>>
+                   // <<< MODIFIED: Set initial post container position >>>
+                   if (this.postContainer) {
+                       // Position container so the first post (index 0) is centered
+                       const firstPost = this.postSprites[0];
+                       if (firstPost) {
+                           this.postContainer.position.y = -firstPost.position.y; // Move container up by the first post's offset
+                       } else {
+                           this.postContainer.position.y = 0;
+                       }
+                       this.currentPostIndex = 0;
+                       this.targetPostIndex = 0;
+                       this.isScrollingPosts = false;
+                   }
+                   // <<< END MODIFIED >>>
                }
             } else if (this.animationState === 'idle') {
                 // Normal hand bobbing animation
@@ -207,7 +227,24 @@ private currentPostIndex: number = 0;
                 const offset = this.buttonOffsets[i];
                 button.position.x = -7 + Math.sin(this.timeAccumulator * 2 + offset) * 0.2;
                 button.position.y = (3 - (i * 1.5)) + Math.cos(this.timeAccumulator * 3 + offset) * 0.1;
-            }
+           }
+
+           // <<< ADDED: Handle post scrolling animation >>>
+           if (this.isScrollingPosts && this.postContainer) {
+               const elapsed = this.timeAccumulator - this.scrollStartTime;
+               const progress = Math.min(elapsed / this.scrollDuration, 1);
+               const easedProgress = Easing.easeInOutQuad(progress); // Use easing
+
+               this.postContainer.position.y = this.scrollStartY + (this.scrollTargetY - this.scrollStartY) * easedProgress;
+
+               if (progress >= 1) {
+                   this.postContainer.position.y = this.scrollTargetY; // Ensure final position
+                   this.isScrollingPosts = false;
+                   this.currentPostIndex = this.targetPostIndex; // Update index after scroll completes
+                   console.log(`Scrolled to post ${this.currentPostIndex + 1}`);
+               }
+           }
+           // <<< END ADDED >>>
         }
     }
 
@@ -238,31 +275,47 @@ private currentPostIndex: number = 0;
                 this.phoneSprite.position.set(0, -5, 0.2); // Phone slightly in front of hand
                this.threeScene.add(this.phoneSprite);
 
-               // <<< ADDED: Create post sprites as children of the phone >>>
+               // <<< MODIFIED: Create post container and stack posts vertically >>>
+               this.postContainer = new THREE.Group();
+               this.phoneSprite.add(this.postContainer); // Add container to phone
+               this.postContainer.position.set(0, 0, 0.01); // Position container slightly in front of phone bg
+
                this.postSprites = []; // Clear previous sprites if any
+               let accumulatedHeight = 0;
+               const postSpacing = 1.0; // Vertical space between posts
+
                for (let i = 0; i < this.postTextures.length; i++) {
                    const postMaterial = new THREE.SpriteMaterial({
                        map: this.postTextures[i],
                        transparent: true,
-                       opacity: 1, // Opacity controlled by visibility
-                       depthTest: false // Ensure posts render on top of phone
+                       opacity: 1,
+                       depthTest: false // Ensure posts render on top
                    });
                    const postSprite = new THREE.Sprite(postMaterial);
-                   // Scale and position the post relative to the phone
-                   // Calculate post scale and position based on phone scale
-                  const paddingFactor = 0.08; // Post occupies 80% of the phone's inner space
-                  const postScaleX = phoneScaleX * paddingFactor; // Adjust aspect ratio (assuming post is squarer than phone screen area)
-                  const postScaleY = phoneScaleY * paddingFactor;
-                  const postOffsetY = phoneScaleY * 0.00; // No vertical offset
 
-                  postSprite.scale.set(postScaleX, postScaleY, 1);
-                  postSprite.position.set(0, postOffsetY, 0.01); // Center X, slightly offset Y, slightly in front
-                  postSprite.visible = false; // Initially hidden
+                   // Calculate scale based on phone scale
+                   const paddingFactor = 0.08; // Post occupies 80% of the phone's inner space
+                   const postScaleX = phoneScaleX * paddingFactor; // Adjust aspect ratio
+                   const postScaleY = phoneScaleY * paddingFactor;
+                   postSprite.scale.set(postScaleX, postScaleY, 1);
+
+                   // Position posts vertically stacked within the container
+                   // Center of the first post (i=0) should be near y=0 in the container
+                   const postPositionY = -(i * (postScaleY + postSpacing));
+                   postSprite.position.set(0, postPositionY, 0); // Position within the container
                    postSprite.name = `Post${i + 1}`;
-                   this.phoneSprite.add(postSprite); // Add as child
+                   // postSprite.visible = true; // All posts are technically visible within the container
+
+                   this.postContainer.add(postSprite); // Add post to the container
                    this.postSprites.push(postSprite);
+
+                   // Store height for scroll calculation (use scaleY as height proxy)
+                   accumulatedHeight += postScaleY + postSpacing;
                }
-               // <<< END ADDED >>>
+               this.currentPostIndex = 0; // Start at the first post
+               this.targetPostIndex = 0;
+               this.postContainer.position.y = 0; // Initial position shows the first post centered
+               // <<< END MODIFIED >>>
            }
         } else if (clickedObject.name.startsWith("ThoughtButton")) {
             const buttonIndex = parseInt(clickedObject.name.replace("ThoughtButton", "")) - 1;
@@ -271,31 +324,29 @@ private currentPostIndex: number = 0;
 
             this.sceneManager.changeScene('cena1_trabalho');
        }
-       // <<< MODIFIED: Handle clicks on the phone OR the post to cycle posts >>>
-       else if ((clickedObject === this.phoneSprite || clickedObject.name.startsWith("Post")) && this.animationState === 'phoneIdle') {
-            console.log("Phone or Post clicked - cycling posts");
-            this.cyclePosts();
-        }
+       // <<< MODIFIED: Handle clicks on the phone OR the post to INITIATE SCROLL >>>
+       else if ((clickedObject === this.phoneSprite || clickedObject.name.startsWith("Post")) && this.animationState === 'phoneIdle' && !this.isScrollingPosts) {
+           console.log("Phone or Post clicked - starting scroll");
+
+           if (this.postSprites.length > 1 && this.postContainer) {
+               this.targetPostIndex = (this.currentPostIndex + 1) % this.postSprites.length;
+
+               // Calculate target Y based on the height of posts scrolled past
+               const targetPost = this.postSprites[this.targetPostIndex];
+               // We want the center of the target post to align with the center of the container (y=0)
+               // The post's position.y is its center relative to the container.
+               // So, we need to move the container *up* by the target post's position.y amount.
+               this.scrollTargetY = -targetPost.position.y;
+
+               this.scrollStartY = this.postContainer.position.y;
+               this.scrollStartTime = this.timeAccumulator;
+               this.isScrollingPosts = true;
+
+               // Update current index immediately or after scroll? Let's do after scroll in update.
+               // this.currentPostIndex = this.targetPostIndex;
+           }
+       }
        // <<< END MODIFIED >>>
    }
 
-   // <<< ADDED: Method to show the current post >>>
-   private showCurrentPost(): void {
-       if (this.postSprites.length > 0) {
-           this.postSprites.forEach((sprite, index) => {
-               sprite.visible = (index === this.currentPostIndex);
-           });
-           console.log(`Showing post ${this.currentPostIndex + 1}`);
-       }
-   }
-   // <<< END ADDED >>>
-
-   // <<< ADDED: Method to cycle through posts >>>
-   private cyclePosts(): void {
-       if (this.postSprites.length > 0) {
-           this.currentPostIndex = (this.currentPostIndex + 1) % this.postSprites.length;
-           this.showCurrentPost();
-       }
-   }
-   // <<< END ADDED >>>
 }
