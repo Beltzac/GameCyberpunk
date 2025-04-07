@@ -39,8 +39,8 @@ export class Cena1TrabalhoScene extends Scene {
     // private cursorBlinkAccumulator = 0;
     // private readonly CURSOR_BLINK_RATE = 0.6;
 
-    constructor(gameEngine: GameEngine, assetLoader: AssetLoader, sceneManager: SceneManager) {
-        super(gameEngine);
+    constructor(gameEngine: GameEngine, assetLoader: AssetLoader, sceneManager: SceneManager) { // Removed camera parameter
+        super(gameEngine); // Removed camera from super call
         this.assetLoader = assetLoader;
         this.sceneManager = sceneManager;
         console.log("Cena1TrabalhoScene created");
@@ -217,7 +217,7 @@ export class Cena1TrabalhoScene extends Scene {
         if (!this.isNotebookOpen) {
             console.log('Preparing to transition to street scene...');
             if (this.sceneManager) {
-                this.sceneManager.changeScene('cena2_rua');
+                this.sceneManager.changeScene('cena2_rua', 'glitch');
             }
         }
     }

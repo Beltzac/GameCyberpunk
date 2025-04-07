@@ -56,8 +56,8 @@ export class Cena2RuaScene extends Scene {
     private postClippingPlanes: THREE.Plane[] = []; // Planes for masking posts
 
 
-    constructor(gameEngine: GameEngine, assetLoader: AssetLoader, sceneManager: SceneManager) {
-        super(gameEngine); // Pass gameEngine to base constructor
+    constructor(gameEngine: GameEngine, assetLoader: AssetLoader, sceneManager: SceneManager) { // Removed camera parameter
+        super(gameEngine); // Removed camera from super call
         this.assetLoader = assetLoader;
         this.sceneManager = sceneManager;
         console.log("Cena2RuaScene created");
@@ -457,7 +457,7 @@ export class Cena2RuaScene extends Scene {
             console.log(`Thought button ${buttonIndex + 1} clicked`);
             // Add thought-specific logic here later
 
-            this.sceneManager.changeScene('cena1_trabalho');
+            this.sceneManager.changeScene('cena1_trabalho', 'glitch');
         }
         // <<< MODIFIED: Handle clicks on the phone OR the post to INITIATE SCROLL >>>
         else if ((clickedObject === this.phoneSprite || clickedObject.name.startsWith("Post")) && this.animationState === 'phoneIdle' && !this.isScrollingPosts) {

@@ -6,10 +6,12 @@ import { GameEngine } from './GameEngine'; // Import GameEngine
 export abstract class Scene {
     public threeScene: THREE.Scene; // Made public for direct access
     protected gameEngine: GameEngine; // Store reference to GameEngine
+    // public camera: THREE.Camera; // Removed - Use GameEngine's camera
 
-    constructor(gameEngine: GameEngine) {
+    constructor(gameEngine: GameEngine) { // Removed camera parameter
         this.threeScene = new THREE.Scene();
         this.gameEngine = gameEngine;
+        // this.camera = camera; // Removed assignment
         console.log(`Base Scene created`);
     }
 
