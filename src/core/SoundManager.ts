@@ -8,6 +8,9 @@ export class SoundManager {
     private backgroundSounds: Map<string, THREE.Audio>;
     private assetLoader: AssetLoader;
     private loadingPromises: Map<string, Promise<void>> = new Map(); // Track loading sounds
+    private isAudioAllowed = false;
+    private queuedSounds: Array<() => void> = [];
+
     constructor(camera: THREE.Camera, assetLoader: AssetLoader) {
         this.audioListener = new THREE.AudioListener();
         camera.add(this.audioListener);
@@ -15,6 +18,29 @@ export class SoundManager {
         this.backgroundSounds = new Map();
         this.assetLoader = assetLoader;
         this.loadingPromises = new Map();
+
+        // Add multiple interaction handlers to enable audio
+        const enableAudio = () => {
+            if (!this.isAudioAllowed) {
+                this.isAudioAllowed = true;
+                this.playQueuedSounds();
+                // Remove all interaction listeners
+                window.removeEventListener('click', enableAudio);
+                window.removeEventListener('keydown', enableAudio);
+                window.removeEventListener('touchstart', enableAudio);
+                window.removeEventListener('mousedown', enableAudio);
+            }
+        };
+        // Listen for various user interactions
+        window.addEventListener('click', enableAudio);
+        window.addEventListener('keydown', enableAudio);
+        window.addEventListener('touchstart', enableAudio);
+        window.addEventListener('mousedown', enableAudio);
+    }
+
+    private playQueuedSounds() {
+        this.queuedSounds.forEach(play => play());
+        this.queuedSounds = [];
     }
 
     public loadSound(name: string, url: string, isBackground: boolean = false): Promise<void> {
@@ -61,6 +87,11 @@ export class SoundManager {
     }
 
     public async playSound(name: string, volume: number = 0.5): Promise<void> {
+        if (!this.isAudioAllowed) {
+            this.queuedSounds.push(() => this.playSound(name, volume));
+            return;
+        }
+
         let sound = this.sounds.get(name);
 
         // If sound not found, check if it's currently loading
@@ -92,6 +123,11 @@ export class SoundManager {
     }
 
     public async playBackground(name: string, volume: number = 0.3): Promise<void> {
+        if (!this.isAudioAllowed) {
+            this.queuedSounds.push(() => this.playBackground(name, volume));
+            return;
+        }
+
         let sound = this.backgroundSounds.get(name);
 
         // If sound not found, check if it's currently loading

@@ -104,12 +104,6 @@ export class GameEngine {
         const initialSceneName = this.uiManager.getInitialScene();
         const availableScenes = this.sceneManager.getSceneNames();
 
-
-
-        console.log("GameEngine: Starting main loop...");
-        this.clock.start();
-        this.gameLoop(); // Start the loop
-
         if (initialSceneName && availableScenes.includes(initialSceneName)) {
             console.log(`GameEngine: Setting initial scene from localStorage: ${initialSceneName}`);
             await this.sceneManager.setScene(initialSceneName); // Set without transition
@@ -123,6 +117,12 @@ export class GameEngine {
             // Optionally throw an error or prevent starting
              return; // Prevent starting if no scenes
         }
+
+        console.log("GameEngine: Starting main loop...");
+        this.clock.start();
+        this.gameLoop(); // Start the loop
+
+
     }
 
     public stop(): void {

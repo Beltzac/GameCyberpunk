@@ -160,7 +160,7 @@ export class Cena2RuaScene extends Scene {
 
 
     async onEnter(): Promise<void> {
-        console.log('onEnter');
+        console.log('onEnter' + ' entering scene Cena2RuaScene');
         await this.gameEngine.soundManager.playBackground('jazz', 1.0);
     }
 
