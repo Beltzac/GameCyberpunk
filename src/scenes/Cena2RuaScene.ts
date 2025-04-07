@@ -32,8 +32,14 @@ export class Cena2RuaScene extends Scene {
     private buttonOffsets: number[] = [];
     private animationStartTime = 0;
     private animationDuration = 1; // seconds
+private buttonAnimationSpeed = 3; // Even slower floating speed
 
-    private buttonAnimationSpeed = 3; // Even slower floating speed
+// <<< ADDED: Properties for posts >>>
+private postTextures: THREE.Texture[] = [];
+private postSprites: THREE.Sprite[] = [];
+private currentPostIndex: number = 0;
+// <<< END ADDED >>>
+
 
     constructor(gameEngine: GameEngine, assetLoader: AssetLoader, sceneManager: SceneManager) {
         super(gameEngine); // Pass gameEngine to base constructor
@@ -57,7 +63,16 @@ export class Cena2RuaScene extends Scene {
                 await this.assetLoader.loadTexture('assets/cena_2_rua/thought1.png'),
                 await this.assetLoader.loadTexture('assets/cena_2_rua/thought2.png'),
                 await this.assetLoader.loadTexture('assets/cena_2_rua/thought3.png')
-            ];
+           ];
+
+           // <<< ADDED: Load post textures >>>
+           this.postTextures = [
+               await this.assetLoader.loadTexture('assets/cena_2_rua/posts/post_1.png'),
+               await this.assetLoader.loadTexture('assets/cena_2_rua/posts/post_2.png'),
+               await this.assetLoader.loadTexture('assets/cena_2_rua/posts/post_3.png')
+           ];
+           // <<< END ADDED >>>
+
 
             // Create background sprite (full screen, non-interactive)
             const backgroundMaterial = new THREE.SpriteMaterial({ map: backgroundTexture });
@@ -174,8 +189,11 @@ export class Cena2RuaScene extends Scene {
                 this.phoneSprite.position.y = -5 + Easing.easeOutQuad(progress) * 5;
                 if (progress >= 1) {
                     this.phoneSprite.position.y = 0;
-                    this.animationState = 'phoneIdle';
-                }
+                   this.animationState = 'phoneIdle';
+                   // <<< ADDED: Show current post when phone becomes idle >>>
+                   this.showCurrentPost();
+                   // <<< END ADDED >>>
+               }
             } else if (this.animationState === 'idle') {
                 // Normal hand bobbing animation
                 const bobProgress = Easing.easeInOutSine(Math.sin(this.timeAccumulator * 5) * 0.5 + 0.5);
@@ -214,16 +232,70 @@ export class Cena2RuaScene extends Scene {
                     opacity: 0
                 });
                 this.phoneSprite = new THREE.Sprite(phoneMaterial);
-                this.phoneSprite.scale.set(6, 9, 1);
-                this.phoneSprite.position.set(0, -5, 0.2);
-                this.threeScene.add(this.phoneSprite);
-            }
+               const phoneScaleX = 6;
+               const phoneScaleY = 9;
+               this.phoneSprite.scale.set(phoneScaleX, phoneScaleY, 1);
+                this.phoneSprite.position.set(0, -5, 0.2); // Phone slightly in front of hand
+               this.threeScene.add(this.phoneSprite);
+
+               // <<< ADDED: Create post sprites as children of the phone >>>
+               this.postSprites = []; // Clear previous sprites if any
+               for (let i = 0; i < this.postTextures.length; i++) {
+                   const postMaterial = new THREE.SpriteMaterial({
+                       map: this.postTextures[i],
+                       transparent: true,
+                       opacity: 1, // Opacity controlled by visibility
+                       depthTest: false // Ensure posts render on top of phone
+                   });
+                   const postSprite = new THREE.Sprite(postMaterial);
+                   // Scale and position the post relative to the phone
+                   // Calculate post scale and position based on phone scale
+                  const paddingFactor = 0.08; // Post occupies 80% of the phone's inner space
+                  const postScaleX = phoneScaleX * paddingFactor; // Adjust aspect ratio (assuming post is squarer than phone screen area)
+                  const postScaleY = phoneScaleY * paddingFactor;
+                  const postOffsetY = phoneScaleY * 0.00; // No vertical offset
+
+                  postSprite.scale.set(postScaleX, postScaleY, 1);
+                  postSprite.position.set(0, postOffsetY, 0.01); // Center X, slightly offset Y, slightly in front
+                  postSprite.visible = false; // Initially hidden
+                   postSprite.name = `Post${i + 1}`;
+                   this.phoneSprite.add(postSprite); // Add as child
+                   this.postSprites.push(postSprite);
+               }
+               // <<< END ADDED >>>
+           }
         } else if (clickedObject.name.startsWith("ThoughtButton")) {
             const buttonIndex = parseInt(clickedObject.name.replace("ThoughtButton", "")) - 1;
             console.log(`Thought button ${buttonIndex + 1} clicked`);
             // Add thought-specific logic here later
 
             this.sceneManager.changeScene('cena1_trabalho');
+       }
+       // <<< MODIFIED: Handle clicks on the phone OR the post to cycle posts >>>
+       else if ((clickedObject === this.phoneSprite || clickedObject.name.startsWith("Post")) && this.animationState === 'phoneIdle') {
+            console.log("Phone or Post clicked - cycling posts");
+            this.cyclePosts();
         }
-    }
+       // <<< END MODIFIED >>>
+   }
+
+   // <<< ADDED: Method to show the current post >>>
+   private showCurrentPost(): void {
+       if (this.postSprites.length > 0) {
+           this.postSprites.forEach((sprite, index) => {
+               sprite.visible = (index === this.currentPostIndex);
+           });
+           console.log(`Showing post ${this.currentPostIndex + 1}`);
+       }
+   }
+   // <<< END ADDED >>>
+
+   // <<< ADDED: Method to cycle through posts >>>
+   private cyclePosts(): void {
+       if (this.postSprites.length > 0) {
+           this.currentPostIndex = (this.currentPostIndex + 1) % this.postSprites.length;
+           this.showCurrentPost();
+       }
+   }
+   // <<< END ADDED >>>
 }
