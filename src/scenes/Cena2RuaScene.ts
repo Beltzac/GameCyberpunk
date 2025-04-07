@@ -269,7 +269,7 @@ private currentPostIndex: number = 0;
                     opacity: 0
                 });
                 this.phoneSprite = new THREE.Sprite(phoneMaterial);
-               const phoneScaleX = 6;
+               const phoneScaleX = 6.5;
                const phoneScaleY = 9;
                this.phoneSprite.scale.set(phoneScaleX, phoneScaleY, 1);
                 this.phoneSprite.position.set(0, -5, 0.2); // Phone slightly in front of hand
@@ -293,10 +293,15 @@ private currentPostIndex: number = 0;
                    });
                    const postSprite = new THREE.Sprite(postMaterial);
 
-                   // Calculate scale based on phone scale
-                   const paddingFactor = 0.08; // Post occupies 80% of the phone's inner space
-                   const postScaleX = phoneScaleX * paddingFactor; // Adjust aspect ratio
-                   const postScaleY = phoneScaleY * paddingFactor;
+                   // Calculate scale based on phone scale, maintaining aspect ratio
+                   const paddingFactor = 0.07; // Post width occupies 80% of the phone's inner space width
+                   const postScaleX = phoneScaleX * paddingFactor;
+
+                   // Get texture aspect ratio
+                   const texture = this.postTextures[i];
+                   const aspectRatio = texture.image ? (texture.image.naturalHeight / texture.image.naturalWidth) : 1; // Default to 1 if image not loaded
+
+                   const postScaleY = postScaleX * aspectRatio; // Calculate Y scale based on X and aspect ratio
                    postSprite.scale.set(postScaleX, postScaleY, 1);
 
                    // Position posts vertically stacked within the container
