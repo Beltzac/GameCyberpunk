@@ -22,7 +22,9 @@ export class SceneManager {
     private isTransitioning: boolean = false;
     private initializedScenes: Set<string> = new Set();
 
+    private glitchSounds: string[] = [];
     private glitchSoundLoaded: boolean = false;
+    private lastGlitchSoundIndex: number = -1;
 
     constructor(gameState: GameState, gameEngine: any) {
         this.scenes = new Map<string, Scene>();
@@ -32,24 +34,39 @@ export class SceneManager {
         this.isTransitioning = false;
         console.log("SceneManager initialized");
 
-        // Load glitch sound if SoundManager is available
+        // Load all glitch sounds if SoundManager is available
         if (this.gameEngine.soundManager) {
-            this.gameEngine.soundManager.loadSound(
-                'glitch_transition',
-                'sounds/glitch_transition.wav'
-            ).then(() => {
-                this.glitchSoundLoaded = true;
-            }).catch(error => {
-                console.error('Failed to load glitch sound:', error);
+            const soundFiles = [
+                'sounds/glitch_0.aiff',
+                'sounds/glitch_1.wav',
+                'sounds/glitch_2.wav',
+                'sounds/glitch_3.wav',
+                'sounds/glitch_4.wav',
+                'sounds/glitch_5.wav',
+                'sounds/glitch_6.wav',
+                'sounds/glitch_7.wav',
+                'sounds/glitch_8.wav',
+                'sounds/glitch_9.wav',
+                'sounds/glitch_10.wav'
+            ];
+
+            const loadPromises = soundFiles.map((file, index) => {
+                return this.gameEngine.soundManager.loadSound(
+                    `glitch_${index}`,
+                    file
+                ).then(() => {
+                    this.glitchSounds.push(`glitch_${index}`);
+                    return true;
+                }).catch(error => {
+                    console.error(`Failed to load glitch sound ${file}:`, error);
+                    return false;
+                });
             });
 
-            this.gameEngine.soundManager.loadSound(
-                'glitch_transition_2',
-                'sounds/glitch_transition_2.wav'
-            ).then(() => {
-                this.glitchSoundLoaded = true;
-            }).catch(error => {
-                console.error('Failed to load glitch sound:', error);
+            Promise.all(loadPromises).then(results => {
+                if (results.some(r => r)) {
+                    this.glitchSoundLoaded = true;
+                }
             });
         }
     }
@@ -254,9 +271,18 @@ export class SceneManager {
                 await this.fade(1, 1000, Easing.easeInCubic);
             } else { // glitch
                 // Play glitch sound if loaded
-                if (this.glitchSoundLoaded && this.gameEngine.soundManager) {
+                if (this.glitchSoundLoaded && this.gameEngine.soundManager && this.glitchSounds.length > 0) {
                     try {
-                        await this.gameEngine.soundManager.playSound('glitch_transition', 0.5);
+                        let randomIndex: number;
+                        if (this.glitchSounds.length > 1) {
+                            do {
+                                randomIndex = Math.floor(Math.random() * this.glitchSounds.length);
+                            } while (randomIndex === this.lastGlitchSoundIndex);
+                        } else {
+                            randomIndex = 0;
+                        }
+                        this.lastGlitchSoundIndex = randomIndex;
+                        await this.gameEngine.soundManager.playSound(this.glitchSounds[randomIndex], 0.4);
                     } catch (error) {
                         console.error('Failed to play glitch transition sound:', error);
                     }
@@ -284,7 +310,18 @@ export class SceneManager {
                 // Play glitch sound again when transitioning in
                 if (this.glitchSoundLoaded && this.gameEngine.soundManager) {
                     try {
-                        await this.gameEngine.soundManager.playSound('glitch_transition_2', 0.5);
+                        if (this.glitchSounds.length > 0) {
+                            let randomIndex: number;
+                            if (this.glitchSounds.length > 1) {
+                                do {
+                                    randomIndex = Math.floor(Math.random() * this.glitchSounds.length);
+                                } while (randomIndex === this.lastGlitchSoundIndex);
+                            } else {
+                                randomIndex = 0;
+                            }
+                            this.lastGlitchSoundIndex = randomIndex;
+                            await this.gameEngine.soundManager.playSound(this.glitchSounds[randomIndex], 0.4);
+                        }
                     } catch (error) {
                         console.error('Failed to play glitch transition sound:', error);
                     }

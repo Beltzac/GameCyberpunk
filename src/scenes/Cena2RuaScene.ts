@@ -474,7 +474,11 @@ export class Cena2RuaScene extends Scene {
             console.log(`Thought button ${buttonIndex + 1} clicked`);
             // Add thought-specific logic here later
 
-            await this.sceneManager.changeScene('cena1_trabalho', 'glitch');
+            setTimeout(async () => {
+                if (this.sceneManager) {
+                    await this.sceneManager.changeScene('cena1_trabalho', 'glitch');
+                }
+            }, 1000);
         }
         // <<< MODIFIED: Handle clicks on the phone OR the post to INITIATE SCROLL >>>
         else if ((clickedObject === this.phoneSprite || clickedObject.name.startsWith("Post")) && this.animationState === 'phoneIdle' && !this.isScrollingPosts) {
