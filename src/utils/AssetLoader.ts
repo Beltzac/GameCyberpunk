@@ -4,12 +4,16 @@ import * as THREE from 'three';
 export class AssetLoader {
     private loadingManager: THREE.LoadingManager;
     private textureLoader: THREE.TextureLoader;
+    private audioLoader: THREE.AudioLoader;
     private textureCache: Map<string, THREE.Texture>;
+    private audioCache: Map<string, AudioBuffer>;
 
     constructor() {
         this.loadingManager = new THREE.LoadingManager();
         this.textureLoader = new THREE.TextureLoader(this.loadingManager);
         this.textureCache = new Map();
+        this.audioCache = new Map();
+        this.audioLoader = new THREE.AudioLoader(this.loadingManager);
     }
 
     public async loadTexture(url: string): Promise<THREE.Texture> {
@@ -52,9 +56,45 @@ export class AssetLoader {
         });
     }
 
-    // Add methods for loading models, audio, etc.
-    // public async loadModel(url: string): Promise<THREE.Group> { ... }
-    // public async loadAudio(url: string): Promise<AudioBuffer> { ... }
+    public async loadAudio(url: string): Promise<AudioBuffer> {
+        // Check cache first
+        if (this.audioCache.has(url)) {
+            return this.audioCache.get(url)!;
+        }
+
+        return new Promise((resolve, reject) => {
+            // Handle paths that may or may not already include 'assets/'
+            const cleanPath = url.startsWith('assets/') ? url : `assets/${url}`;
+            console.log(`AssetLoader: Loading audio from resolved path: ${cleanPath}`);
+
+            this.audioLoader.load(
+                cleanPath,
+                (audioBuffer) => {
+                    console.log(`AssetLoader: Successfully loaded audio from ${cleanPath}`);
+                    this.audioCache.set(url, audioBuffer);
+                    resolve(audioBuffer);
+                },
+                undefined,
+                (error: unknown) => {
+                    console.error(`AssetLoader: Error loading audio from ${cleanPath}:`, error);
+                    let errorMessage = 'Unknown error';
+                    if (error instanceof Error) {
+                        errorMessage = error.message;
+                    } else if (error && typeof error === 'object' && 'type' in error) {
+                        errorMessage = 'Network or file loading error';
+                    } else {
+                        errorMessage = String(error);
+                    }
+                    console.error(`AssetLoader: Full error details for ${cleanPath}:`, {
+                        errorType: typeof error,
+                        errorObject: error,
+                        stack: error instanceof Error ? error.stack : undefined
+                    });
+                    reject(new Error(`Failed to load audio from ${cleanPath}: ${errorMessage}`));
+                }
+            );
+        });
+    }
 
     // Method to load multiple assets, perhaps for a specific scene
     public async loadAssets(assetList: { type: string, url: string, name: string }[]): Promise<Map<string, any>> {

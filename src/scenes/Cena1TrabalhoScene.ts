@@ -50,6 +50,29 @@ export class Cena1TrabalhoScene extends Scene {
         try {
             console.log("Cena1TrabalhoScene initializing...");
 
+            // Load sounds
+            await this.gameEngine.soundManager.loadSound(
+                'city_ambient',
+                'cena_1_trabalho/sounds/city_ambient.mp3',
+                true
+            );
+
+            await this.gameEngine.soundManager.loadSound(
+                'ac_ambient',
+                'cena_1_trabalho/sounds/ac_ambient.mp3',
+                true
+            );
+
+            await this.gameEngine.soundManager.loadSound(
+                'lid_open',
+                'cena_1_trabalho/sounds/lid_open.wav'
+            );
+
+            await this.gameEngine.soundManager.loadSound(
+                'lid_close',
+                'cena_1_trabalho/sounds/lid_close.wav'
+            );
+
             // Load assets (background, notebook textures)
             console.log('Loading background texture...');
             const backgroundTexture = await this.assetLoader.loadTexture('cena_1_trabalho/background.png')
@@ -103,6 +126,10 @@ export class Cena1TrabalhoScene extends Scene {
             this.setupDustMotes();
 
             console.log("Cena1TrabalhoScene initialized.");
+
+            // Play ambient sounds
+            this.gameEngine.soundManager.playBackground('city_ambient', 3.0);
+            this.gameEngine.soundManager.playBackground('ac_ambient', 3.0);
         } catch (error) {
             console.error("Failed to initialize Cena1TrabalhoScene:", error);
             throw error;
@@ -213,12 +240,26 @@ export class Cena1TrabalhoScene extends Scene {
         //     }
         // }
 
+
+        if(this.isNotebookOpen){
+            this.gameEngine.soundManager.playSound('lid_open', 5);
+        }else{
+            this.gameEngine.soundManager.playSound('lid_close', 5);
+        }
+
         // Transition to next scene when closing notebook
         if (!this.isNotebookOpen) {
             console.log('Preparing to transition to street scene...');
-            if (this.sceneManager) {
-                this.sceneManager.changeScene('cena2_rua', 'glitch');
-            }
+
+            setTimeout(() =>
+                {
+                    if (this.sceneManager) {
+                        // Stop sounds before changing scene
+                        this.gameEngine.soundManager.stopAllBackground();
+                        this.sceneManager.changeScene('cena2_rua', 'glitch');
+                    }
+                },
+                2000);
         }
     }
 

@@ -5,6 +5,7 @@ import { GameEngine } from './GameEngine';
 import { GameState } from './GameState';
 import { AssetLoader } from '../utils/AssetLoader';
 import { Easing } from '../utils/Easing';
+import { SoundManager } from './SoundManager';
 
 
 export type TransitionType = 'fade' | 'glitch';
@@ -21,6 +22,8 @@ export class SceneManager {
     private isTransitioning: boolean = false;
     private initializedScenes: Set<string> = new Set();
 
+    private glitchSoundLoaded: boolean = false;
+
     constructor(gameState: GameState, gameEngine: any) {
         this.scenes = new Map<string, Scene>();
         this._currentScene = null;
@@ -28,6 +31,27 @@ export class SceneManager {
         this.gameState = gameState;
         this.isTransitioning = false;
         console.log("SceneManager initialized");
+
+        // Load glitch sound if SoundManager is available
+        if (this.gameEngine.soundManager) {
+            this.gameEngine.soundManager.loadSound(
+                'glitch_transition',
+                'sounds/glitch_transition.wav'
+            ).then(() => {
+                this.glitchSoundLoaded = true;
+            }).catch(error => {
+                console.error('Failed to load glitch sound:', error);
+            });
+
+            this.gameEngine.soundManager.loadSound(
+                'glitch_transition_2',
+                'sounds/glitch_transition_2.wav'
+            ).then(() => {
+                this.glitchSoundLoaded = true;
+            }).catch(error => {
+                console.error('Failed to load glitch sound:', error);
+            });
+        }
     }
 
     public setRenderer(renderer: THREE.WebGLRenderer): void {
@@ -222,6 +246,10 @@ export class SceneManager {
             if (transitionType === 'fade') {
                 await this.fade(1, 1000, Easing.easeInCubic);
             } else { // glitch
+                // Play glitch sound if loaded
+                if (this.glitchSoundLoaded && this.gameEngine.soundManager) {
+                    this.gameEngine.soundManager.playSound('glitch_transition', 0.5);
+                }
                 await this.glitchTransition(1, 1000, Easing.easeInCubic);
             }
 
@@ -238,6 +266,10 @@ export class SceneManager {
                 await this.fade(0, 1000, Easing.easeOutCubic);
             } else { // glitch
                 await this.glitchTransition(0, 1000, Easing.easeOutCubic);
+                // Play glitch sound again when transitioning in
+                if (this.glitchSoundLoaded && this.gameEngine.soundManager) {
+                    this.gameEngine.soundManager.playSound('glitch_transition_2',  0.5);
+                }
             }
         } finally {
             this.isTransitioning = false;

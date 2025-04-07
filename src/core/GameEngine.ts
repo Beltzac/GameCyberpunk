@@ -6,6 +6,7 @@ import { UIManager } from '../ui/UIManager'; // Import UIManager
 import { GameState } from './GameState';
 import { Scene } from './Scene'; // Import base Scene type
 import { AssetLoader } from '../utils/AssetLoader';
+import { SoundManager } from './SoundManager';
 const CAMERA_FRUSTUM_SIZE = 8; // Centralized camera frustum size
 
 export class GameEngine {
@@ -19,6 +20,7 @@ export class GameEngine {
     public inputManager: InputManager;
     public uiManager: UIManager; // Add UIManager property
     public assetLoader: AssetLoader;
+    public soundManager: SoundManager;
     // Removed cursor properties: cursorTexture, cursorMesh, cursorMaterial, mouseX, mouseY, raycaster, isOverClickable
     private animationFrameId: number | null = null;
 
@@ -57,8 +59,9 @@ export class GameEngine {
         this.clock = new THREE.Clock();
 
         // Core Managers
-        this.gameState = new GameState();
         this.assetLoader = new AssetLoader(); // Initialize assetLoader *before* inputManager
+        this.soundManager = new SoundManager(this.camera, this.assetLoader);
+        this.gameState = new GameState();
         this.sceneManager = new SceneManager(this.gameState, this);
         this.uiManager = new UIManager(); // Instantiate UIManager
         this.inputManager = new InputManager(this.canvas, this.camera, this.sceneManager, this.assetLoader, this.uiManager); // Pass uiManager
