@@ -2,10 +2,10 @@
 import * as THREE from 'three';
 import { SceneManager } from './SceneManager';
 import { InputManager } from './InputManager';
+import { UIManager } from '../ui/UIManager'; // Import UIManager
 import { GameState } from './GameState';
 import { Scene } from './Scene'; // Import base Scene type
 import { AssetLoader } from '../utils/AssetLoader';
-
 const CAMERA_FRUSTUM_SIZE = 8; // Centralized camera frustum size
 
 export class GameEngine {
@@ -17,6 +17,7 @@ export class GameEngine {
     public gameState: GameState;
     public sceneManager: SceneManager; // Keep only one declaration
     public inputManager: InputManager;
+    public uiManager: UIManager; // Add UIManager property
     public assetLoader: AssetLoader;
     // Removed cursor properties: cursorTexture, cursorMesh, cursorMaterial, mouseX, mouseY, raycaster, isOverClickable
     private animationFrameId: number | null = null;
@@ -58,10 +59,12 @@ export class GameEngine {
         this.gameState = new GameState();
         this.assetLoader = new AssetLoader(); // Initialize assetLoader *before* inputManager
         this.sceneManager = new SceneManager(this.gameState, this);
-        this.inputManager = new InputManager(this.canvas, this.camera, this.sceneManager, this.assetLoader); // Now assetLoader is initialized
+        this.uiManager = new UIManager(); // Instantiate UIManager
+        this.inputManager = new InputManager(this.canvas, this.camera, this.sceneManager, this.assetLoader, this.uiManager); // Pass uiManager
 
         // Set renderer in SceneManager for transitions
         this.sceneManager.setRenderer(this.renderer);
+        this.uiManager.setSceneManager(this.sceneManager); // Connect UIManager and SceneManager
 
         // Add ambient light for phong materials
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); // Adjusted intensity slightly
@@ -91,6 +94,26 @@ export class GameEngine {
             console.warn("GameEngine: start() called but engine is already running.");
             return;
         }
+        console.log("GameEngine: Starting...");
+
+        // Set initial scene based on localStorage or default
+        const initialSceneName = this.uiManager.getInitialScene();
+        const availableScenes = this.sceneManager.getSceneNames();
+
+        if (initialSceneName && availableScenes.includes(initialSceneName)) {
+            console.log(`GameEngine: Setting initial scene from localStorage: ${initialSceneName}`);
+            this.sceneManager.setScene(initialSceneName); // Set without transition
+        } else if (availableScenes.length > 0) {
+            const defaultScene = availableScenes[0]; // Use the first registered scene as default
+            console.log(`GameEngine: No valid initial scene in localStorage or none set. Setting default scene: ${defaultScene}`);
+            this.sceneManager.setScene(defaultScene); // Set default without transition
+        } else {
+            // This case should ideally not happen if scenes are registered before start()
+            console.error("GameEngine: No scenes registered! Cannot start.");
+            // Optionally throw an error or prevent starting
+             return; // Prevent starting if no scenes
+        }
+
         console.log("GameEngine: Starting main loop...");
         this.clock.start();
         this.gameLoop(); // Start the loop
@@ -118,6 +141,7 @@ export class GameEngine {
             currentScene.update(deltaTime);
             // 2. Update InputManager (handles cursor position and click animations)
             this.inputManager.update(deltaTime);
+            this.uiManager.update(); // Update UI Manager (though currently minimal)
             // Removed call to this.updateCursorPosition() - InputManager handles this
             // 3. Render the scene
             this.renderer.render(currentScene.threeScene, this.camera);

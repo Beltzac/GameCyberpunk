@@ -4,10 +4,13 @@ import { SceneManager } from './SceneManager';
 import { Scene } from './Scene';
 import { AssetLoader } from '../utils/AssetLoader'; // Import AssetLoader
 import { Easing } from '../utils/Easing'; // Import Easing
+import { UIManager } from '../ui/UIManager'; // Import UIManager
+
 export class InputManager {
     private canvas: HTMLCanvasElement;
     private camera: THREE.Camera; // Add camera reference
     private sceneManager: SceneManager; // Add SceneManager reference
+    private uiManager: UIManager; // Add UIManager reference
     private clickRaycaster: THREE.Raycaster; // Renamed for clarity
     private mouse: THREE.Vector2;
     private assetLoader: AssetLoader; // Add AssetLoader reference
@@ -26,11 +29,13 @@ export class InputManager {
     // Mouse move callback
     private mouseMoveCallbacks: Array<(x: number, y: number) => void> = [];
 
-    constructor(canvas: HTMLCanvasElement, camera: THREE.Camera, sceneManager: SceneManager, assetLoader: AssetLoader) { // Add assetLoader
+    // Add uiManager to constructor
+    constructor(canvas: HTMLCanvasElement, camera: THREE.Camera, sceneManager: SceneManager, assetLoader: AssetLoader, uiManager: UIManager) {
         this.canvas = canvas;
         this.camera = camera;
         this.sceneManager = sceneManager;
-        this.assetLoader = assetLoader; // Store assetLoader
+        this.assetLoader = assetLoader;
+        this.uiManager = uiManager; // Store UIManager
         this.clickRaycaster = new THREE.Raycaster(); // Initialize click raycaster
         this.mouse = new THREE.Vector2();
         this.setupEventListeners();
@@ -38,19 +43,25 @@ export class InputManager {
             // Initial position update after texture loads
             this.updateCursorPosition();
         });
-        console.log("InputManager initialized with Camera, SceneManager, and AssetLoader");
+        console.log("InputManager initialized with Camera, SceneManager, AssetLoader, and UIManager");
     }
 
     private setupEventListeners(): void {
+        // Bind handlers to ensure 'this' context is correct
+        this.handleCanvasClick = this.handleCanvasClick.bind(this);
+        this.handleMouseMove = this.handleMouseMove.bind(this);
+        this.handleKeyDown = this.handleKeyDown.bind(this); // Bind keydown handler
+
         // Example: Click listener
-        this.canvas.addEventListener('click', (event) => {
-            this.handleCanvasClick(event);
-        });
+        this.canvas.addEventListener('click', this.handleCanvasClick);
 
         // Add mouse move listener
-        this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
+        this.canvas.addEventListener('mousemove', this.handleMouseMove);
 
-        // Add other listeners as needed (e.g., keydown, keyup)
+        // Add keydown listener to the window
+        window.addEventListener('keydown', this.handleKeyDown);
+
+        // Add other listeners as needed (e.g., keyup)
         // window.addEventListener('keyup', this.handleKeyUp.bind(this));
     }
 
@@ -189,11 +200,15 @@ export class InputManager {
         }
     }
 
-    // Example handler for keydown
-    // private handleKeyDown(event: KeyboardEvent): void {
-    //     console.log(`InputManager: Key down - ${event.key}`);
-    //     // Notify relevant systems
-    // }
+    // Handler for keydown events
+    private handleKeyDown(event: KeyboardEvent): void {
+        // console.log(`InputManager: Key down - ${event.key}`); // Optional: Log key presses
+        if (event.key.toLowerCase() === 'p') {
+            console.log("InputManager: 'P' key pressed. Toggling debug overlay.");
+            this.uiManager.toggleDebugOverlay();
+        }
+        // Notify relevant systems if needed for other keys
+    }
 
     // Example handler for keyup
     // private handleKeyUp(event: KeyboardEvent): void {
@@ -201,19 +216,11 @@ export class InputManager {
     //     // Notify relevant systems
     // }
 
-    // Example handler for mouse move
-    // private handleMouseMove(event: MouseEvent): void {
-    //     const rect = this.canvas.getBoundingClientRect();
-    //     const x = event.clientX - rect.left;
-    //     const y = event.clientY - rect.top;
-    //     // console.log(`InputManager: Mouse move at (${x.toFixed(2)}, ${y.toFixed(2)})`); // Can be noisy
-    //     // Notify relevant systems
-    // }
-
     // Method to remove listeners if needed (e.g., when stopping the engine)
     public dispose(): void {
         this.canvas.removeEventListener('click', this.handleCanvasClick);
         this.canvas.removeEventListener('mousemove', this.handleMouseMove);
+        window.removeEventListener('keydown', this.handleKeyDown); // Remove keydown listener
         // Clear all callbacks
         this.mouseMoveCallbacks = [];
 

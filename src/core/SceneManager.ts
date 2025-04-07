@@ -104,6 +104,11 @@ export class SceneManager {
         return this._currentScene;
     }
 
+    public getSceneNames(): string[] {
+        return Array.from(this.scenes.keys());
+    }
+
+
     private nextSceneId: string | null = null;
 
     public async changeScene(sceneId: string, assetLoader?: AssetLoader): Promise<void> {
