@@ -21,13 +21,13 @@ export class Cena2RuaScene extends Scene {
     private rainParticles: THREE.Points | null = null;
     private rainGeometry = new THREE.BufferGeometry();
     private rainMaterial = new THREE.PointsMaterial({
-        color: 0xaaaaaa,
-        size: 0.1,
+        color: 0xbbbbbb, // Slightly brighter
+        size: 2,      // Slightly larger
         transparent: true,
-        opacity: 0.7,
+        opacity: 0.6,   // Even more opaque
         depthTest: false,
         blending: THREE.NormalBlending,
-        clippingPlanes: [] // Explicitly disable clipping for rain (use empty array)
+        clippingPlanes: []
     });
     private animationState: 'idle' | 'handMovingDown' | 'phoneMovingUp' | 'phoneIdle' = 'idle';
     private timeAccumulator = 0;
@@ -36,13 +36,13 @@ export class Cena2RuaScene extends Scene {
     private rainVelocities: Float32Array | null = null;
     private animationStartTime = 0;
     private animationDuration = 1; // seconds
-private buttonAnimationSpeed = 3; // Even slower floating speed
+    private buttonAnimationSpeed = 3; // Even slower floating speed
 
-// <<< ADDED: Properties for posts >>>
-private postTextures: THREE.Texture[] = [];
-private postSprites: THREE.Mesh[] = []; // Changed type to Mesh
-private currentPostIndex: number = 0;
-// <<< END ADDED >>>
+    // <<< ADDED: Properties for posts >>>
+    private postTextures: THREE.Texture[] = [];
+    private postSprites: THREE.Mesh[] = []; // Changed type to Mesh
+    private currentPostIndex: number = 0;
+    // <<< END ADDED >>>
     // <<< ADDED: Properties for post scrolling >>>
     private postContainer: THREE.Group | null = null;
     private isScrollingPosts: boolean = false;
@@ -78,15 +78,15 @@ private currentPostIndex: number = 0;
                 await this.assetLoader.loadTexture('assets/cena_2_rua/thought1.png'),
                 await this.assetLoader.loadTexture('assets/cena_2_rua/thought2.png'),
                 await this.assetLoader.loadTexture('assets/cena_2_rua/thought3.png')
-           ];
+            ];
 
-           // <<< ADDED: Load post textures >>>
-           this.postTextures = [
-               await this.assetLoader.loadTexture('assets/cena_2_rua/posts/post_1.png'),
-               await this.assetLoader.loadTexture('assets/cena_2_rua/posts/post_2.png'),
-               await this.assetLoader.loadTexture('assets/cena_2_rua/posts/post_3.png')
-           ];
-           // <<< END ADDED >>>
+            // <<< ADDED: Load post textures >>>
+            this.postTextures = [
+                await this.assetLoader.loadTexture('assets/cena_2_rua/posts/post_1.png'),
+                await this.assetLoader.loadTexture('assets/cena_2_rua/posts/post_2.png'),
+                await this.assetLoader.loadTexture('assets/cena_2_rua/posts/post_3.png')
+            ];
+            // <<< END ADDED >>>
 
 
             // Create background sprite (full screen, non-interactive)
@@ -148,39 +148,39 @@ private currentPostIndex: number = 0;
             throw error;
         }
     }
-private setupRain(): void {
-    const particleCount = 1500; // Increased particle count for denser rain
-    const positions = new Float32Array(particleCount * 3);
-    this.rainVelocities = new Float32Array(particleCount * 3); // Initialize velocities array
+    private setupRain(): void {
+        const particleCount = 2500; // Further increase particle count
+        const positions = new Float32Array(particleCount * 3);
+        this.rainVelocities = new Float32Array(particleCount * 3); // Initialize velocities array
 
-    const spawnAreaWidth = 15; // Reduced width
-    const spawnAreaDepth = 15; // Reduced depth
-    const spawnHeight = 10; // Reduced initial height
-    const baseFallSpeed = 0.15; // Reverted fall speed
-    const speedVariation = 0.05; // Reverted variation
-    const windSpeed = 0.02; // Reverted wind speed
+        const spawnAreaWidth = 20; // Reduced width
+        const spawnAreaDepth = 15; // Reduced depth
+        const spawnHeight = 10; // Reduced initial height
+        const baseFallSpeed = 0.10; // Increase fall speed slightly
+        const speedVariation = 0.20; // Increase variation slightly
+        const windSpeed = 0.02; // Keep wind speed the same for now
 
-    for (let i = 0; i < particleCount; i++) {
-        // Initial position
-        positions[i * 3] = (Math.random() - 0.5) * spawnAreaWidth; // x
-        positions[i * 3 + 1] = Math.random() * spawnHeight; // y (start higher)
-        positions[i * 3 + 2] = 0; // z - Force to 0 plane
+        for (let i = 0; i < particleCount; i++) {
+            // Initial position
+            positions[i * 3] = (Math.random() - 0.5) * spawnAreaWidth; // x
+            positions[i * 3 + 1] = Math.random() * spawnHeight; // y (start higher)
+            positions[i * 3 + 2] = 0; // z - Force to 0 plane
 
-        // Initial velocity
-        this.rainVelocities[i * 3] = windSpeed; // x velocity (wind)
-        this.rainVelocities[i * 3 + 1] = -(baseFallSpeed + Math.random() * speedVariation); // y velocity (falling speed variation)
-        this.rainVelocities[i * 3 + 2] = 0; // z velocity - Keep at 0
+            // Initial velocity
+            this.rainVelocities[i * 3] = windSpeed; // x velocity (wind)
+            this.rainVelocities[i * 3 + 1] = -(baseFallSpeed + Math.random() * speedVariation); // y velocity (falling speed variation)
+            this.rainVelocities[i * 3 + 2] = 0; // z velocity - Keep at 0
+        }
+
+        this.rainGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        this.rainParticles = new THREE.Points(this.rainGeometry, this.rainMaterial);
+        this.rainParticles.position.z = 0.01; // Reset Z position slightly in front
+        // Removed explicit layer setting
+        this.rainParticles.renderOrder = 999; // Render rain on top
+        this.rainParticles.userData.isBackground = true; // Mark rain as non-interactive
+        // Removed debug log
+        this.threeScene.add(this.rainParticles);
     }
-
-    this.rainGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    this.rainParticles = new THREE.Points(this.rainGeometry, this.rainMaterial);
-    this.rainParticles.position.z = 0.01; // Reset Z position slightly in front
-    // Removed explicit layer setting
-    this.rainParticles.renderOrder = 999; // Render rain on top
-    this.rainParticles.userData.isBackground = true; // Mark rain as non-interactive
-    // Removed debug log
-    this.threeScene.add(this.rainParticles);
-}
 
     update(deltaTime: number): void {
         if (this.rainParticles && this.rainVelocities) {
@@ -261,40 +261,40 @@ private setupRain(): void {
                 // <<< END ADDED >>>
                 // <<< END ADDED >>>
 
-                 if (progress >= 1) {
-                     // --- Step 1: Set Final Animated Positions ---
-                     if (this.phoneSprite) {
-                         this.phoneSprite.position.y = 0;
-                     }
-                     if (this.phoneBackgroundPlane) {
-                         this.phoneBackgroundPlane.position.y = 0;
-                     }
-                     if (this.postContainer) {
-                         this.postContainer.position.y = 0; // Final animated position
-                     }
-                     // Set final clipping plane constants for Y=0
-                     if (this.postClippingPlanes.length === 4 && this.phoneBackgroundPlane) {
-                         const halfHeight = (this.phoneBackgroundPlane.geometry as THREE.PlaneGeometry).parameters.height / 2;
-                         this.postClippingPlanes[0].constant = halfHeight; // Top: 0 + halfHeight
-                         this.postClippingPlanes[1].constant = halfHeight; // Bottom: -0 + halfHeight
-                     }
+                if (progress >= 1) {
+                    // --- Step 1: Set Final Animated Positions ---
+                    if (this.phoneSprite) {
+                        this.phoneSprite.position.y = 0;
+                    }
+                    if (this.phoneBackgroundPlane) {
+                        this.phoneBackgroundPlane.position.y = 0;
+                    }
+                    if (this.postContainer) {
+                        this.postContainer.position.y = 0; // Final animated position
+                    }
+                    // Set final clipping plane constants for Y=0
+                    if (this.postClippingPlanes.length === 4 && this.phoneBackgroundPlane) {
+                        const halfHeight = (this.phoneBackgroundPlane.geometry as THREE.PlaneGeometry).parameters.height / 2;
+                        this.postClippingPlanes[0].constant = halfHeight; // Top: 0 + halfHeight
+                        this.postClippingPlanes[1].constant = halfHeight; // Bottom: -0 + halfHeight
+                    }
 
-                     // --- Step 2: Change Animation State ---
-                     this.animationState = 'phoneIdle';
-                     this.currentPostIndex = 0;
-                     this.targetPostIndex = 0;
-                     this.isScrollingPosts = false;
+                    // --- Step 2: Change Animation State ---
+                    this.animationState = 'phoneIdle';
+                    this.currentPostIndex = 0;
+                    this.targetPostIndex = 0;
+                    this.isScrollingPosts = false;
 
-                     // --- Step 3: Post-Animation Adjustment for Centering ---
-                     // Now, adjust the container's final Y position so the first post is centered
-                     if (this.postContainer && this.postSprites.length > 0) {
-                         const firstPost = this.postSprites[0];
-                         // The container is at Y=0. The first post is at firstPost.position.y within it.
-                         // To center the first post at the container's origin (Y=0), shift the container up.
-                         this.postContainer.position.y = -firstPost.position.y;
-                     }
-                     // If no posts, Y remains 0 (already set in Step 1)
-                 }
+                    // --- Step 3: Post-Animation Adjustment for Centering ---
+                    // Now, adjust the container's final Y position so the first post is centered
+                    if (this.postContainer && this.postSprites.length > 0) {
+                        const firstPost = this.postSprites[0];
+                        // The container is at Y=0. The first post is at firstPost.position.y within it.
+                        // To center the first post at the container's origin (Y=0), shift the container up.
+                        this.postContainer.position.y = -firstPost.position.y;
+                    }
+                    // If no posts, Y remains 0 (already set in Step 1)
+                }
             } else if (this.animationState === 'idle') {
                 // Normal hand bobbing animation
                 const bobProgress = Easing.easeInOutSine(Math.sin(this.timeAccumulator * 5) * 0.5 + 0.5);
@@ -308,24 +308,24 @@ private setupRain(): void {
                 const offset = this.buttonOffsets[i];
                 button.position.x = -7 + Math.sin(this.timeAccumulator * 2 + offset) * 0.2;
                 button.position.y = (3 - (i * 1.5)) + Math.cos(this.timeAccumulator * 3 + offset) * 0.1;
-           }
+            }
 
-           // <<< ADDED: Handle post scrolling animation >>>
-           if (this.isScrollingPosts && this.postContainer) {
-               const elapsed = this.timeAccumulator - this.scrollStartTime;
-               const progress = Math.min(elapsed / this.scrollDuration, 1);
-               const easedProgress = Easing.easeInOutQuad(progress); // Use easing
+            // <<< ADDED: Handle post scrolling animation >>>
+            if (this.isScrollingPosts && this.postContainer) {
+                const elapsed = this.timeAccumulator - this.scrollStartTime;
+                const progress = Math.min(elapsed / this.scrollDuration, 1);
+                const easedProgress = Easing.easeInOutQuad(progress); // Use easing
 
-               this.postContainer.position.y = this.scrollStartY + (this.scrollTargetY - this.scrollStartY) * easedProgress;
+                this.postContainer.position.y = this.scrollStartY + (this.scrollTargetY - this.scrollStartY) * easedProgress;
 
-               if (progress >= 1) {
-                   this.postContainer.position.y = this.scrollTargetY; // Ensure final position
-                   this.isScrollingPosts = false;
-                   this.currentPostIndex = this.targetPostIndex; // Update index after scroll completes
-                   console.log(`Scrolled to post ${this.currentPostIndex + 1}`);
-               }
-           }
-           // <<< END ADDED >>>
+                if (progress >= 1) {
+                    this.postContainer.position.y = this.scrollTargetY; // Ensure final position
+                    this.isScrollingPosts = false;
+                    this.currentPostIndex = this.targetPostIndex; // Update index after scroll completes
+                    console.log(`Scrolled to post ${this.currentPostIndex + 1}`);
+                }
+            }
+            // <<< END ADDED >>>
         }
     }
 
@@ -350,138 +350,138 @@ private setupRain(): void {
                     opacity: 0
                 });
                 this.phoneSprite = new THREE.Sprite(phoneMaterial);
-               const phoneScaleX = 6.5;
-               const phoneScaleY = 9;
-               this.phoneSprite.scale.set(phoneScaleX, phoneScaleY, 1);
+                const phoneScaleX = 6.5;
+                const phoneScaleY = 9;
+                this.phoneSprite.scale.set(phoneScaleX, phoneScaleY, 1);
                 this.phoneSprite.position.set(0, -5, 0.2); // Phone slightly in front of hand
-               this.threeScene.add(this.phoneSprite);
+                this.threeScene.add(this.phoneSprite);
 
 
-                   // <<< MODIFIED: Create a background plane for the phone screen area >>>
-                   // Calculate the visual size of the screen area based on post scaling
-                   const screenWidth = phoneScaleX * 0.53; // Match postScaleX calculation base (paddingFactor = 0.5)
-                   const screenHeight = phoneScaleY * 0.56; // Adjust height slightly if needed, or derive from aspect ratio/padding
-                   const phoneBgGeometry = new THREE.PlaneGeometry(screenWidth, screenHeight); // Use calculated size
-                   const phoneBgMaterial = new THREE.MeshBasicMaterial({ color: 0xcccfd9 });
-                   this.phoneBackgroundPlane = new THREE.Mesh(phoneBgGeometry, phoneBgMaterial); // Store reference
-                   // this.phoneBackgroundPlane.scale.set(1, 1, 1); // Geometry defines size now
-                   // Set initial position to match the phone's starting position
-                   this.phoneBackgroundPlane.position.set(this.phoneSprite.position.x, this.phoneSprite.position.y, 0.18);
-                   this.phoneBackgroundPlane.visible = false; // Start invisible
-                   this.threeScene.add(this.phoneBackgroundPlane);
-                   // <<< ADDED: Define Clipping Planes based on background plane geometry >>>
-                   const halfWidth = screenWidth / 2;
-                   const halfHeight = screenHeight / 2;
-                   // Define initial clipping planes based on initial Y position (-5)
-                   const initialY = this.phoneSprite?.position.y ?? -5; // Get initial Y or default
-                   this.postClippingPlanes = [
-                       new THREE.Plane(new THREE.Vector3(0, -1, 0), initialY + halfHeight), // Top edge initial constant
-                       new THREE.Plane(new THREE.Vector3(0, 1, 0), -initialY + halfHeight),  // Bottom edge initial constant
-                       new THREE.Plane(new THREE.Vector3(-1, 0, 0), halfWidth), // Right edge constant
-                       new THREE.Plane(new THREE.Vector3(1, 0, 0), halfWidth)   // Left edge constant
-                   ];
-                   // <<< END ADDED >>>
-               // <<< MODIFIED: Create post container and stack posts vertically >>>
-               this.postContainer = new THREE.Group();
-               // Set initial WORLD position to match the phone's starting position BEFORE adding to scene
-               if (this.phoneSprite) {
+                // <<< MODIFIED: Create a background plane for the phone screen area >>>
+                // Calculate the visual size of the screen area based on post scaling
+                const screenWidth = phoneScaleX * 0.53; // Match postScaleX calculation base (paddingFactor = 0.5)
+                const screenHeight = phoneScaleY * 0.56; // Adjust height slightly if needed, or derive from aspect ratio/padding
+                const phoneBgGeometry = new THREE.PlaneGeometry(screenWidth, screenHeight); // Use calculated size
+                const phoneBgMaterial = new THREE.MeshBasicMaterial({ color: 0xcccfd9 });
+                this.phoneBackgroundPlane = new THREE.Mesh(phoneBgGeometry, phoneBgMaterial); // Store reference
+                // this.phoneBackgroundPlane.scale.set(1, 1, 1); // Geometry defines size now
+                // Set initial position to match the phone's starting position
+                this.phoneBackgroundPlane.position.set(this.phoneSprite.position.x, this.phoneSprite.position.y, 0.18);
+                this.phoneBackgroundPlane.visible = false; // Start invisible
+                this.threeScene.add(this.phoneBackgroundPlane);
+                // <<< ADDED: Define Clipping Planes based on background plane geometry >>>
+                const halfWidth = screenWidth / 2;
+                const halfHeight = screenHeight / 2;
+                // Define initial clipping planes based on initial Y position (-5)
+                const initialY = this.phoneSprite?.position.y ?? -5; // Get initial Y or default
+                this.postClippingPlanes = [
+                    new THREE.Plane(new THREE.Vector3(0, -1, 0), initialY + halfHeight), // Top edge initial constant
+                    new THREE.Plane(new THREE.Vector3(0, 1, 0), -initialY + halfHeight),  // Bottom edge initial constant
+                    new THREE.Plane(new THREE.Vector3(-1, 0, 0), halfWidth), // Right edge constant
+                    new THREE.Plane(new THREE.Vector3(1, 0, 0), halfWidth)   // Left edge constant
+                ];
+                // <<< END ADDED >>>
+                // <<< MODIFIED: Create post container and stack posts vertically >>>
+                this.postContainer = new THREE.Group();
+                // Set initial WORLD position to match the phone's starting position BEFORE adding to scene
+                if (this.phoneSprite) {
                     this.postContainer.position.set(this.phoneSprite.position.x, this.phoneSprite.position.y, 0.19);
-               } else {
+                } else {
                     this.postContainer.position.set(0, -5, 0.19); // Fallback
-               }
-               this.postContainer.visible = false; // Start invisible
-               this.threeScene.add(this.postContainer); // Add container directly to the scene
+                }
+                this.postContainer.visible = false; // Start invisible
+                this.threeScene.add(this.postContainer); // Add container directly to the scene
 
-               this.postSprites = []; // Clear previous sprites if any
-               let accumulatedHeight = 0;
-               const postSpacing = 1.0; // Vertical space between posts
+                this.postSprites = []; // Clear previous sprites if any
+                let accumulatedHeight = 0;
+                const postSpacing = 1.0; // Vertical space between posts
 
-               for (let i = 0; i < this.postTextures.length; i++) {
-                   const texture = this.postTextures[i]; // Get texture first
+                for (let i = 0; i < this.postTextures.length; i++) {
+                    const texture = this.postTextures[i]; // Get texture first
 
-                   // Calculate scale based on phone scale, maintaining aspect ratio
-                   const paddingFactor = 0.5; // Post width occupies 50% of the phone's inner space width
-                   const postScaleX = phoneScaleX * paddingFactor;
-                   const aspectRatio = texture.image ? (texture.image.naturalHeight / texture.image.naturalWidth) : 1;
-                   const postScaleY = postScaleX * aspectRatio;
+                    // Calculate scale based on phone scale, maintaining aspect ratio
+                    const paddingFactor = 0.5; // Post width occupies 50% of the phone's inner space width
+                    const postScaleX = phoneScaleX * paddingFactor;
+                    const aspectRatio = texture.image ? (texture.image.naturalHeight / texture.image.naturalWidth) : 1;
+                    const postScaleY = postScaleX * aspectRatio;
 
-                   // Create PlaneGeometry matching the calculated scale
-                   const postGeometry = new THREE.PlaneGeometry(postScaleX, postScaleY);
+                    // Create PlaneGeometry matching the calculated scale
+                    const postGeometry = new THREE.PlaneGeometry(postScaleX, postScaleY);
 
-                   // Create MeshBasicMaterial
-                   const postMaterial = new THREE.MeshBasicMaterial({
-                       map: texture,
-                       // transparent: true, // Temporarily disable for testing clipping
-                       opacity: 1,
-                       depthTest: true,
-                       depthWrite: false, // <<< ADD: Prevent writing to depth buffer >>>
+                    // Create MeshBasicMaterial
+                    const postMaterial = new THREE.MeshBasicMaterial({
+                        map: texture,
+                        // transparent: true, // Temporarily disable for testing clipping
+                        opacity: 1,
+                        depthTest: true,
+                        depthWrite: false, // <<< ADD: Prevent writing to depth buffer >>>
 
-                       // Clipping plane configuration
-                       clippingPlanes: this.postClippingPlanes,
-                       clipIntersection: true, // Render pixels *inside* the intersection of ALL planes
-                       side: THREE.DoubleSide // Render both sides in case of rotation issues (optional but safer)
-                   });
+                        // Clipping plane configuration
+                        clippingPlanes: this.postClippingPlanes,
+                        clipIntersection: true, // Render pixels *inside* the intersection of ALL planes
+                        side: THREE.DoubleSide // Render both sides in case of rotation issues (optional but safer)
+                    });
 
-                   // Create Mesh instead of Sprite
-                   const postMesh = new THREE.Mesh(postGeometry, postMaterial);
+                    // Create Mesh instead of Sprite
+                    const postMesh = new THREE.Mesh(postGeometry, postMaterial);
 
-                   // Redundant declarations removed below - these were calculated earlier for the geometry
-                   // const paddingFactor = 0.5;
-                   // const postScaleX = phoneScaleX * paddingFactor;
-                   // const texture = this.postTextures[i];
-                   // const aspectRatio = texture.image ? (texture.image.naturalHeight / texture.image.naturalWidth) : 1;
+                    // Redundant declarations removed below - these were calculated earlier for the geometry
+                    // const paddingFactor = 0.5;
+                    // const postScaleX = phoneScaleX * paddingFactor;
+                    // const texture = this.postTextures[i];
+                    // const aspectRatio = texture.image ? (texture.image.naturalHeight / texture.image.naturalWidth) : 1;
 
-                   // postMesh.scale.set(1, 1, 1); // Scale is now handled by geometry size
+                    // postMesh.scale.set(1, 1, 1); // Scale is now handled by geometry size
 
-                   // Position posts vertically stacked within the container
-                   // Center of the first post (i=0) should be near y=0 in the container
-                   const postPositionY = -(i * (postScaleY + postSpacing));
-                   postMesh.position.set(0, postPositionY, 0); // Position within the container
-                   postMesh.name = `Post${i + 1}`;
-                   // postSprite.visible = true; // All posts are technically visible within the container
+                    // Position posts vertically stacked within the container
+                    // Center of the first post (i=0) should be near y=0 in the container
+                    const postPositionY = -(i * (postScaleY + postSpacing));
+                    postMesh.position.set(0, postPositionY, 0); // Position within the container
+                    postMesh.name = `Post${i + 1}`;
+                    // postSprite.visible = true; // All posts are technically visible within the container
 
-                   this.postContainer.add(postMesh); // Add mesh to the container
-                   // We still need to store references, maybe change type of postSprites or cast later
-                   this.postSprites.push(postMesh); // Store mesh reference (cast no longer needed)
+                    this.postContainer.add(postMesh); // Add mesh to the container
+                    // We still need to store references, maybe change type of postSprites or cast later
+                    this.postSprites.push(postMesh); // Store mesh reference (cast no longer needed)
 
-                   // Store height for scroll calculation (use scaleY as height proxy)
-                   accumulatedHeight += postScaleY + postSpacing;
-               }
-               this.currentPostIndex = 0; // Start at the first post
-               this.targetPostIndex = 0;
-               // this.postContainer.position.y = 0; // REMOVED - Initial local position is (0,0,0.01). Centering happens after animation.
-               // <<< END MODIFIED >>>
-           }
+                    // Store height for scroll calculation (use scaleY as height proxy)
+                    accumulatedHeight += postScaleY + postSpacing;
+                }
+                this.currentPostIndex = 0; // Start at the first post
+                this.targetPostIndex = 0;
+                // this.postContainer.position.y = 0; // REMOVED - Initial local position is (0,0,0.01). Centering happens after animation.
+                // <<< END MODIFIED >>>
+            }
         } else if (clickedObject.name.startsWith("ThoughtButton")) {
             const buttonIndex = parseInt(clickedObject.name.replace("ThoughtButton", "")) - 1;
             console.log(`Thought button ${buttonIndex + 1} clicked`);
             // Add thought-specific logic here later
 
             this.sceneManager.changeScene('cena1_trabalho');
-       }
-       // <<< MODIFIED: Handle clicks on the phone OR the post to INITIATE SCROLL >>>
-       else if ((clickedObject === this.phoneSprite || clickedObject.name.startsWith("Post")) && this.animationState === 'phoneIdle' && !this.isScrollingPosts) {
-           console.log("Phone or Post clicked - starting scroll");
+        }
+        // <<< MODIFIED: Handle clicks on the phone OR the post to INITIATE SCROLL >>>
+        else if ((clickedObject === this.phoneSprite || clickedObject.name.startsWith("Post")) && this.animationState === 'phoneIdle' && !this.isScrollingPosts) {
+            console.log("Phone or Post clicked - starting scroll");
 
-           if (this.postSprites.length > 1 && this.postContainer) {
-               this.targetPostIndex = (this.currentPostIndex + 1) % this.postSprites.length;
+            if (this.postSprites.length > 1 && this.postContainer) {
+                this.targetPostIndex = (this.currentPostIndex + 1) % this.postSprites.length;
 
-               // Calculate target Y based on the height of posts scrolled past
-               const targetPost = this.postSprites[this.targetPostIndex];
-               // We want the center of the target post to align with the center of the container (y=0)
-               // The post's position.y is its center relative to the container.
-               // So, we need to move the container *up* by the target post's position.y amount.
-               this.scrollTargetY = -targetPost.position.y;
+                // Calculate target Y based on the height of posts scrolled past
+                const targetPost = this.postSprites[this.targetPostIndex];
+                // We want the center of the target post to align with the center of the container (y=0)
+                // The post's position.y is its center relative to the container.
+                // So, we need to move the container *up* by the target post's position.y amount.
+                this.scrollTargetY = -targetPost.position.y;
 
-               this.scrollStartY = this.postContainer.position.y;
-               this.scrollStartTime = this.timeAccumulator;
-               this.isScrollingPosts = true;
+                this.scrollStartY = this.postContainer.position.y;
+                this.scrollStartTime = this.timeAccumulator;
+                this.isScrollingPosts = true;
 
-               // Update current index immediately or after scroll? Let's do after scroll in update.
-               // this.currentPostIndex = this.targetPostIndex;
-           }
-       }
-       // <<< END MODIFIED >>>
-   }
+                // Update current index immediately or after scroll? Let's do after scroll in update.
+                // this.currentPostIndex = this.targetPostIndex;
+            }
+        }
+        // <<< END MODIFIED >>>
+    }
 
 }
