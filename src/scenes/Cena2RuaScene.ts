@@ -149,7 +149,7 @@ export class Cena2RuaScene extends Scene {
         }
     }
     private setupRain(): void {
-        const particleCount = 2500; // Further increase particle count
+        const particleCount = 1500; // Further increase particle count
         const positions = new Float32Array(particleCount * 3);
         this.rainVelocities = new Float32Array(particleCount * 3); // Initialize velocities array
 
@@ -188,7 +188,7 @@ export class Cena2RuaScene extends Scene {
             const velocities = this.rainVelocities;
             const fallLimit = -6; // Adjusted lower limit
             const resetHeight = 10; // Adjusted reset height
-            const spawnAreaWidth = 15; // Match reduced setup width
+            const spawnAreaWidth = 30; // Match reduced setup width
 
             const effectiveDeltaTime = Math.min(deltaTime, 0.1); // Clamp deltaTime to avoid large jumps
 
@@ -321,7 +321,13 @@ export class Cena2RuaScene extends Scene {
                 if (progress >= 1) {
                     this.postContainer.position.y = this.scrollTargetY; // Ensure final position
                     this.isScrollingPosts = false;
-                    this.currentPostIndex = this.targetPostIndex; // Update index after scroll completes
+                    // Keep container at final scroll position for next scroll
+                    this.scrollStartTime = this.timeAccumulator;
+                    console.log(`update: scroll complete. currentPostIndex=${this.currentPostIndex}, isScrollingPosts=${this.isScrollingPosts}`);
+                    // Reset scroll state to allow new scrolls
+                    if (this.postContainer) {
+                        this.scrollStartY = this.postContainer.position.y;
+                    }
                     console.log(`Scrolled to post ${this.currentPostIndex + 1}`);
                 }
             }
@@ -462,23 +468,50 @@ export class Cena2RuaScene extends Scene {
         // <<< MODIFIED: Handle clicks on the phone OR the post to INITIATE SCROLL >>>
         else if ((clickedObject === this.phoneSprite || clickedObject.name.startsWith("Post")) && this.animationState === 'phoneIdle' && !this.isScrollingPosts) {
             console.log("Phone or Post clicked - starting scroll");
+            if (this.postContainer) {
+                // Add new random post to bottom
+                const newPostIndex = Math.floor(Math.random() * this.postTextures.length);
+                const texture = this.postTextures[newPostIndex];
 
-            if (this.postSprites.length > 1 && this.postContainer) {
-                this.targetPostIndex = (this.currentPostIndex + 1) % this.postSprites.length;
+                // Reuse existing scaling logic
+                const phoneScaleX = 6.5;
+                const paddingFactor = 0.5;
+                const postScaleX = phoneScaleX * paddingFactor;
+                const aspectRatio = texture.image ? (texture.image.naturalHeight / texture.image.naturalWidth) : 1;
+                const postScaleY = postScaleX * aspectRatio;
 
-                // Calculate target Y based on the height of posts scrolled past
-                const targetPost = this.postSprites[this.targetPostIndex];
-                // We want the center of the target post to align with the center of the container (y=0)
-                // The post's position.y is its center relative to the container.
-                // So, we need to move the container *up* by the target post's position.y amount.
-                this.scrollTargetY = -targetPost.position.y;
+                // Create new post
+                const postGeometry = new THREE.PlaneGeometry(postScaleX, postScaleY);
+                const postMaterial = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    depthTest: true,
+                    depthWrite: false,
+                    clippingPlanes: this.postClippingPlanes,
+                    clipIntersection: true,
+                    side: THREE.DoubleSide
+                });
 
-                this.scrollStartY = this.postContainer.position.y;
-                this.scrollStartTime = this.timeAccumulator;
+                const newPost = new THREE.Mesh(postGeometry, postMaterial);
+                const postSpacing = 1.0;
+
+                // Position new post at bottom of existing posts
+                const postPositionY = -(this.postSprites.length * (postScaleY + postSpacing));
+                newPost.position.set(0, postPositionY, 0);
+                newPost.name = `Post${this.postSprites.length + 1}`;
+
+                this.postContainer.add(newPost);
+                this.postSprites.push(newPost);
+
+                // Target the new post
+                this.targetPostIndex = this.postSprites.length - 1;
+                this.currentPostIndex = this.targetPostIndex;
+
+                // Set scroll parameters
+                console.log(`Added new post at index ${this.targetPostIndex}, total posts: ${this.postSprites.length}`);
                 this.isScrollingPosts = true;
-
-                // Update current index immediately or after scroll? Let's do after scroll in update.
-                // this.currentPostIndex = this.targetPostIndex;
+                this.scrollStartY = this.postContainer.position.y;
+                this.scrollTargetY = -newPost.position.y;
+                this.scrollStartTime = this.timeAccumulator;
             }
         }
         // <<< END MODIFIED >>>
