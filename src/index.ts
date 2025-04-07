@@ -35,10 +35,10 @@ gameEngine.sceneManager.addScene('cena2_rua', cena2RuaScene);
 
 // 5. Set the Initial Scene
 //meEngine.sceneManager.setScene('cena1_trabalho'); // Start with work scene
-gameEngine.sceneManager.setScene('cena2_rua'); // Start with work scene
+await gameEngine.sceneManager.setScene('cena2_rua'); // Start with work scene
 
 // 6. Start the Game Engine's Main Loop
-gameEngine.start();
+await gameEngine.start();
 
 console.log('AION Game Engine started.');
 

@@ -108,7 +108,7 @@ export class UIManager {
         console.log("Debug overlay populated with scenes:", sceneNames);
     }
 
-    private goToSelectedScene(): void {
+    private async goToSelectedScene(): Promise<void> {
         if (!this.sceneManager || !this.debugOverlay) return;
         const sceneSelect = this.debugOverlay.querySelector<HTMLSelectElement>('#debug-scene-selector');
         const selectedScene = sceneSelect?.value;
@@ -116,7 +116,7 @@ export class UIManager {
         if (selectedScene) {
             console.log(`Debug Overlay: Requesting scene change to "${selectedScene}"`);
             // Assuming changeScene handles transitions etc.
-            this.sceneManager.changeScene(selectedScene);
+            await this.sceneManager.changeScene(selectedScene);
             this.hideDebugOverlay(); // Hide after selection
         } else {
             console.warn("Debug Overlay: No scene selected.");

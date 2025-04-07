@@ -93,7 +93,7 @@ export class GameEngine {
         console.log("GameEngine: Initialization complete.");
     }
 
-    public start(): void {
+    public async start(): Promise<void> {
         if (this.animationFrameId !== null) {
             console.warn("GameEngine: start() called but engine is already running.");
             return;
@@ -106,11 +106,11 @@ export class GameEngine {
 
         if (initialSceneName && availableScenes.includes(initialSceneName)) {
             console.log(`GameEngine: Setting initial scene from localStorage: ${initialSceneName}`);
-            this.sceneManager.setScene(initialSceneName); // Set without transition
+            await this.sceneManager.setScene(initialSceneName); // Set without transition
         } else if (availableScenes.length > 0) {
             const defaultScene = availableScenes[0]; // Use the first registered scene as default
             console.log(`GameEngine: No valid initial scene in localStorage or none set. Setting default scene: ${defaultScene}`);
-            this.sceneManager.setScene(defaultScene); // Set default without transition
+            await this.sceneManager.setScene(defaultScene); // Set default without transition
         } else {
             // This case should ideally not happen if scenes are registered before start()
             console.error("GameEngine: No scenes registered! Cannot start.");

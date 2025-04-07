@@ -148,6 +148,17 @@ export class Cena2RuaScene extends Scene {
             throw error;
         }
     }
+
+
+    async onEnter(): Promise<void> {
+
+    }
+
+    async onExit(): Promise<void> {
+        // Stop sounds before changing scene
+        this.gameEngine.soundManager.stopAllBackground();
+    }
+
     private setupRain(): void {
         const particleCount = 1500; // Further increase particle count
         const positions = new Float32Array(particleCount * 3);
@@ -339,7 +350,7 @@ export class Cena2RuaScene extends Scene {
         // Custom rendering if needed
     }
 
-    public handleClick(intersects: THREE.Intersection[]): void {
+    public async handleClick(intersects: THREE.Intersection[]): Promise<void> {
         if (!intersects.length) return;
 
         const clickedObject = intersects[0].object;
@@ -463,7 +474,7 @@ export class Cena2RuaScene extends Scene {
             console.log(`Thought button ${buttonIndex + 1} clicked`);
             // Add thought-specific logic here later
 
-            this.sceneManager.changeScene('cena1_trabalho', 'glitch');
+            await this.sceneManager.changeScene('cena1_trabalho', 'glitch');
         }
         // <<< MODIFIED: Handle clicks on the phone OR the post to INITIATE SCROLL >>>
         else if ((clickedObject === this.phoneSprite || clickedObject.name.startsWith("Post")) && this.animationState === 'phoneIdle' && !this.isScrollingPosts) {

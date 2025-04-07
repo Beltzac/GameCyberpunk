@@ -106,7 +106,6 @@ export class SceneManager {
         this.fadeOverlay.position.addScaledVector(lookDirection, distance);
         // Make the overlay look at the camera's position
         this.fadeOverlay.lookAt(camera.position);
-        // Removed extra closing brace from here
     }
 
     private createGlitchMaterial(): void {
@@ -175,17 +174,17 @@ export class SceneManager {
         console.log(`SceneManager: Scene "${name}" added.`);
     }
 
-    public setScene(name: string): void {
+    public async setScene(name: string): Promise<void> {
         const newScene = this.scenes.get(name);
         if (!newScene) {
             console.error(`SceneManager: Scene with name "${name}" not found.`);
             return;
         }
 
-        // Optional: Call exit method on the old scene
-        // if (this._currentScene && typeof this._currentScene.onExit === 'function') {
-        //     this._currentScene.onExit();
-        // }
+        // Call exit method on the old scene if it exists
+        if (this._currentScene && typeof this._currentScene.onExit === 'function') {
+            await this._currentScene.onExit();
+        }
 
         this._currentScene = newScene;
         this.gameState.setScene(name); // Update game state
@@ -202,10 +201,11 @@ export class SceneManager {
             listener(this._currentScene);
         }
 
-        // Optional: Call enter method on the new scene
-        // if (typeof this._currentScene.onEnter === 'function') {
-        //     this._currentScene.onEnter();
-        // }
+        // Call enter method on the new scene if it exists
+        if (this._currentScene && typeof this._currentScene.onEnter === 'function') {
+            //await this.gameEngine.assetLoader.isEverythingLoaded();
+            await this._currentScene.onEnter();
+        }
     }
 
     public get currentScene(): Scene | null {
@@ -220,92 +220,114 @@ export class SceneManager {
     private nextSceneId: string | null = null;
 
     public async changeScene(sceneId: string, transitionType: TransitionType = 'fade', assetLoader?: AssetLoader): Promise<void> {
+        console.log(`[SceneManager] Starting transition to scene "${sceneId}" with ${transitionType} transition`);
 
         if (this.isTransitioning) {
             if (this.nextSceneId === sceneId) {
-                return;
+                return; // Already transitioning to the requested scene
             }
             console.warn(`SceneManager: Already transitioning to scene "${this.nextSceneId}". Request to change to "${sceneId}" ignored.`);
             return;
         }
 
+        // Log component status before the check
+        console.log(`[SceneManager] Checking transition readiness: renderer=${!!this.renderer}, fadeOverlay=${!!this.fadeOverlay}, fadeMaterial=${!!this.fadeMaterial}, glitchMaterial=${!!this.glitchMaterial}`);
+
         if (!this.renderer || !this.fadeOverlay || !this.fadeMaterial || !this.glitchMaterial) {
-            console.warn("SceneManager: Renderer or transition materials not ready. Switching scene without transition.");
-            this.setScene(sceneId);
-            return;
+            console.warn(`[SceneManager] Transition aborted: Renderer or transition materials not ready. Switching scene directly.`); // Ensure this logs
+            try {
+                await this.setScene(sceneId);
+            } catch (error) {
+                 console.error(`[SceneManager] Error calling setScene directly after failed readiness check:`, error);
+            }
+            return; // Exit after direct switch
         }
 
         this.nextSceneId = sceneId;
-
-
-
         this.isTransitioning = true;
 
         try {
+            console.log(`[SceneManager] Beginning transition out from current scene`);
             // Transition out current scene
             if (transitionType === 'fade') {
+                console.log(`[SceneManager] Starting fade out transition`);
                 await this.fade(1, 1000, Easing.easeInCubic);
             } else { // glitch
                 // Play glitch sound if loaded
                 if (this.glitchSoundLoaded && this.gameEngine.soundManager) {
-                    this.gameEngine.soundManager.playSound('glitch_transition', 0.5);
+                    try {
+                        await this.gameEngine.soundManager.playSound('glitch_transition', 0.5);
+                    } catch (error) {
+                        console.error('Failed to play glitch transition sound:', error);
+                    }
                 }
                 await this.glitchTransition(1, 1000, Easing.easeInCubic);
             }
 
             // Change scene
-            this.setScene(sceneId);
+            console.log(`[SceneManager] Performing scene change to "${sceneId}"`);
+            await this.setScene(sceneId);
+            console.log(`[SceneManager] Scene change to "${sceneId}" completed`);
 
             // Wait for assets to load if AssetLoader is provided
             if (assetLoader) {
-                await assetLoader.isEverythingLoaded();
+                //await assetLoader.isEverythingLoaded();
             }
 
             // Transition in new scene
+            console.log(`[SceneManager] Beginning transition into new scene`);
             if (transitionType === 'fade') {
+                console.log(`[SceneManager] Starting fade in transition`);
                 await this.fade(0, 1000, Easing.easeOutCubic);
             } else { // glitch
                 await this.glitchTransition(0, 1000, Easing.easeOutCubic);
                 // Play glitch sound again when transitioning in
                 if (this.glitchSoundLoaded && this.gameEngine.soundManager) {
-                    this.gameEngine.soundManager.playSound('glitch_transition_2',  0.5);
+                    try {
+                        await this.gameEngine.soundManager.playSound('glitch_transition_2', 0.5);
+                    } catch (error) {
+                        console.error('Failed to play glitch transition sound:', error);
+                    }
                 }
             }
+
+            console.log(`[SceneManager] Transition to "${sceneId}" completed successfully`);
+        } catch (error) {
+            console.error(`[SceneManager] Error during transition to "${sceneId}":`, error);
+            // Don't rethrow here, let finally handle cleanup
         } finally {
             this.isTransitioning = false;
             this.nextSceneId = null;
+            console.log(`[SceneManager] Transition state reset`);
         }
     }
 
     private async fade(targetOpacity: number, duration: number, easingFn: (t: number) => number = Easing.linear): Promise<void> {
         if (!this.fadeOverlay || !this.renderer || !this._currentScene) return;
 
-        const startOpacity = Array.isArray(this.fadeOverlay.material)
-            ? this.fadeOverlay.material[0].opacity
-            : this.fadeOverlay.material.opacity;
+        const material = this.fadeOverlay.material as THREE.MeshBasicMaterial; // Assume it's MeshBasicMaterial for fade
+        const startOpacity = material.opacity;
         const startTime = performance.now();
 
         // Add overlay to scene if not already present
         if (!this._currentScene.threeScene.children.includes(this.fadeOverlay)) {
             this._currentScene.threeScene.add(this.fadeOverlay);
         }
+        // Ensure the correct material is set
+        this.fadeOverlay.material = this.fadeMaterial!;
 
         return new Promise((resolve) => {
             const animate = (currentTime: number) => {
                 const elapsed = currentTime - startTime;
                 const progress = Math.min(elapsed / duration, 1);
 
-                const material = this.fadeOverlay!.material as THREE.MeshBasicMaterial;
-                if (Array.isArray(material)) {
-                    material[0].opacity = startOpacity + (targetOpacity - startOpacity) * easingFn(progress);
-                } else {
-                    material.opacity = startOpacity + (targetOpacity - startOpacity) * easingFn(progress);
-                }
+                const currentMaterial = this.fadeOverlay!.material as THREE.MeshBasicMaterial;
+                currentMaterial.opacity = startOpacity + (targetOpacity - startOpacity) * easingFn(progress);
 
                 if (progress < 1) {
                     requestAnimationFrame(animate);
                 } else {
-                    // If fading out completely, remove overlay from scene
+                    // If fading out completely (opacity 0), remove overlay from scene
                     if (targetOpacity === 0 && this._currentScene && this.fadeOverlay) {
                         this._currentScene.threeScene.remove(this.fadeOverlay);
                     }
@@ -318,8 +340,15 @@ export class SceneManager {
     }
 
     private async glitchTransition(targetIntensity: number, duration: number, easingFn: (t: number) => number = Easing.linear): Promise<void> {
-        if (!this.glitchMaterial || !this.renderer || !this._currentScene || !this.fadeOverlay) return;
+        // Log component status IMMEDIATELY upon entry
+        console.log(`[glitchTransition] Entered. Status: glitchMaterial=${!!this.glitchMaterial}, renderer=${!!this.renderer}, currentScene=${!!this._currentScene}, fadeOverlay=${!!this.fadeOverlay}`);
 
+        if (!this.glitchMaterial || !this.renderer || !this._currentScene || !this.fadeOverlay) {
+             console.warn(`[glitchTransition] Aborting: One or more required components are missing.`);
+             return; // Exit if components are missing
+        }
+
+        console.log(`[glitchTransition] Starting animation. Target intensity: ${targetIntensity}, Duration: ${duration}`);
         const startIntensity = this.glitchMaterial.uniforms.intensity.value;
         const startTime = performance.now();
 
@@ -332,64 +361,84 @@ export class SceneManager {
         }
 
         // We need a render target to capture the current scene
-        const renderTarget = new THREE.WebGLRenderTarget(this.renderer.domElement.width, this.renderer.domElement.height);
+        // Ensure renderer dimensions are valid
+        const width = this.renderer.domElement.width;
+        const height = this.renderer.domElement.height;
+        if (width <= 0 || height <= 0) {
+            console.error(`[glitchTransition] Invalid renderer dimensions (${width}x${height}). Cannot create render target.`);
+            return;
+        }
+        const renderTarget = new THREE.WebGLRenderTarget(width, height);
 
-        return new Promise((resolve) => {
+        return new Promise<void>((resolve) => { // Explicitly type Promise
             const animate = (currentTime: number) => {
-                if (!this.glitchMaterial || !this.renderer || !this._currentScene) {
-                    renderTarget.dispose(); // Clean up render target on early exit
-                    resolve(); // Exit if scene or renderer becomes invalid
-                    return;
-                }
+                // console.log(`[glitchTransition] animate frame at time: ${currentTime.toFixed(2)}`); // Optional: Very verbose log
 
-                // 1. Render the current scene to the render target (excluding the overlay)
-                this.fadeOverlay!.visible = false; // Hide overlay temporarily
-                this.renderer.setRenderTarget(renderTarget);
-                // Render the current scene using the GameEngine's main camera
-                if (this.gameEngine.camera) {
-                    this.renderer.render(this._currentScene.threeScene, this.gameEngine.camera);
-                } else {
-                    console.error("SceneManager: GameEngine does not have a 'camera' property for glitch transition.");
+                // Re-check components inside loop in case something changes (e.g., scene disposed)
+                if (!this.glitchMaterial || !this.renderer || !this._currentScene || !this.fadeOverlay) {
+                    console.warn(`[glitchTransition] Animation aborted mid-loop: Missing required components.`);
                     renderTarget.dispose();
                     resolve();
                     return;
                 }
-                this.renderer.setRenderTarget(null); // Reset render target
-                this.fadeOverlay!.visible = true; // Make overlay visible again
 
-                // 2. Update glitch shader uniforms
-                const elapsed = currentTime - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                const easedProgress = easingFn(progress);
+                try {
+                    // 1. Render the current scene to the render target (excluding the overlay)
+                    this.fadeOverlay.visible = false; // Hide overlay temporarily
+                    this.renderer.setRenderTarget(renderTarget);
 
-                this.glitchMaterial.uniforms.time.value = currentTime * 0.001; // Pass time for animation
-                this.glitchMaterial.uniforms.intensity.value = startIntensity + (targetIntensity - startIntensity) * easedProgress;
-                this.glitchMaterial.uniforms.tDiffuse.value = renderTarget.texture;
-
-                // 3. The GameEngine's render loop handles rendering the overlay
-
-                if (progress < 1) {
-                    requestAnimationFrame(animate);
-                } else {
-                    // Reset intensity and switch back material after transition completes
-                    this.glitchMaterial.uniforms.intensity.value = targetIntensity;
-                    if (targetIntensity === 0 && this.fadeMaterial && this.fadeOverlay) { // If glitching out (intensity -> 0) and materials/overlay exist
-                       this.fadeOverlay.material = this.fadeMaterial; // Switch back to fade material
-                       // Also remove overlay from scene
-                       if (this._currentScene) {
-                           this._currentScene.threeScene.remove(this.fadeOverlay);
-                       }
+                    if (this.gameEngine.camera) {
+                        this.renderer.render(this._currentScene.threeScene, this.gameEngine.camera);
+                    } else {
+                        console.error("[glitchTransition] GameEngine does not have a 'camera' property.");
+                        this.renderer.setRenderTarget(null); // Reset render target before exiting
+                        renderTarget.dispose();
+                        resolve(); // Resolve promise even on error to avoid hanging
+                        return;
                     }
-                    renderTarget.dispose(); // Clean up render target
-                    resolve();
+                    this.renderer.setRenderTarget(null); // Reset render target
+                    this.fadeOverlay.visible = true; // Make overlay visible again
+
+                    // 2. Update glitch shader uniforms
+                    const elapsed = currentTime - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const easedProgress = easingFn(progress);
+                    const currentIntensity = startIntensity + (targetIntensity - startIntensity) * easedProgress;
+                    // console.log(`[glitchTransition] Progress: ${progress.toFixed(3)}, Eased: ${easedProgress.toFixed(3)}, Intensity: ${currentIntensity.toFixed(3)}`);
+
+                    this.glitchMaterial.uniforms.time.value = currentTime * 0.001;
+                    this.glitchMaterial.uniforms.intensity.value = currentIntensity;
+                    this.glitchMaterial.uniforms.tDiffuse.value = renderTarget.texture;
+
+                    // 3. The GameEngine's render loop handles rendering the overlay
+
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        console.log(`[glitchTransition] Animation loop finished. Final intensity: ${currentIntensity.toFixed(3)}`);
+                        // Reset intensity and switch back material after transition completes
+                        this.glitchMaterial.uniforms.intensity.value = targetIntensity; // Ensure final value is set
+
+                        if (targetIntensity === 0 && this.fadeMaterial && this.fadeOverlay) {
+                           console.log(`[glitchTransition] Resetting material to fade and removing overlay.`);
+                           this.fadeOverlay.material = this.fadeMaterial;
+                           if (this._currentScene) {
+                               this._currentScene.threeScene.remove(this.fadeOverlay);
+                           }
+                        }
+                        renderTarget.dispose();
+                        console.log(`[glitchTransition] Resolving promise.`);
+                        resolve();
+                    }
+                } catch (error) {
+                    console.error("[glitchTransition] Error inside animation loop:", error);
+                    renderTarget.dispose(); // Ensure cleanup on error
+                    resolve(); // Resolve promise even on error to avoid hanging
                 }
-            };
+            }; // End of animate function definition
 
             requestAnimationFrame(animate);
-        });
-    }
+        }); // End of Promise constructor
+    } // End of glitchTransition method
 
 }
-
-
-

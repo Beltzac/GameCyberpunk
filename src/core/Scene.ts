@@ -25,11 +25,11 @@ export abstract class Scene {
     abstract render(renderer: THREE.WebGLRenderer): void;
 
     // Handle click events on scene objects
-    abstract handleClick(intersects: THREE.Intersection[]): void;
+    abstract handleClick(intersects: THREE.Intersection[]): Promise<void>
 
     // Removed getThreeScene() as threeScene is now public
 
-    // Optional: Add methods for handling scene activation/deactivation
-    // public onEnter(): void {}
-    // public onExit(): void {}
+    // Methods for handling scene activation/deactivation
+    abstract onEnter(): Promise<void>;
+    abstract onExit(): Promise<void>;
 }

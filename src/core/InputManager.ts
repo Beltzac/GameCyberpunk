@@ -91,7 +91,7 @@ export class InputManager {
         this.updateCursorPosition();
     }
 
-    private handleCanvasClick(event: MouseEvent): void {
+    private async handleCanvasClick(event: MouseEvent): Promise<void> {
         const rect = this.canvas.getBoundingClientRect();
 
         // Calculate mouse position in normalized device coordinates (-1 to +1)
@@ -188,7 +188,7 @@ export class InputManager {
             console.log(logMessage);
 
             // Forward intersects to current scene's click handler
-            currentScene.handleClick(intersects);
+            await currentScene.handleClick(intersects);
 
             // Create click animation at the intersection point
             // Create click animation at the NDC position of the click

@@ -126,14 +126,21 @@ export class Cena1TrabalhoScene extends Scene {
             this.setupDustMotes();
 
             console.log("Cena1TrabalhoScene initialized.");
-
-            // Play ambient sounds
-            this.gameEngine.soundManager.playBackground('city_ambient', 3.0);
-            this.gameEngine.soundManager.playBackground('ac_ambient', 3.0);
         } catch (error) {
             console.error("Failed to initialize Cena1TrabalhoScene:", error);
             throw error;
         }
+    }
+
+    async onEnter(): Promise<void> {
+        // Play ambient sounds
+        await this.gameEngine.soundManager.playBackground('city_ambient', 3.0);
+        await this.gameEngine.soundManager.playBackground('ac_ambient', 3.0);
+    }
+
+    async onExit(): Promise<void> {
+        // Stop sounds before changing scene
+        this.gameEngine.soundManager.stopAllBackground();
     }
 
     private setupDustMotes(): void {
@@ -219,7 +226,7 @@ export class Cena1TrabalhoScene extends Scene {
         // Custom rendering if needed (currently none)
     }
 
-    public toggleNotebook(): void {
+    public async toggleNotebook(): Promise<void> {
         if (!this.notebookSprite || !this.notebookOpenTexture || !this.notebookClosedTexture) {
             console.error('Missing required notebook components');
             return;
@@ -241,29 +248,25 @@ export class Cena1TrabalhoScene extends Scene {
         // }
 
 
-        if(this.isNotebookOpen){
-            this.gameEngine.soundManager.playSound('lid_open', 5);
-        }else{
-            this.gameEngine.soundManager.playSound('lid_close', 5);
+        if (this.isNotebookOpen) {
+            await this.gameEngine.soundManager.playSound('lid_open', 5);
+        } else {
+            await this.gameEngine.soundManager.playSound('lid_close', 5);
         }
 
         // Transition to next scene when closing notebook
         if (!this.isNotebookOpen) {
             console.log('Preparing to transition to street scene...');
 
-            setTimeout(() =>
-                {
-                    if (this.sceneManager) {
-                        // Stop sounds before changing scene
-                        this.gameEngine.soundManager.stopAllBackground();
-                        this.sceneManager.changeScene('cena2_rua', 'glitch');
-                    }
-                },
-                2000);
+            setTimeout(async () => {
+                if (this.sceneManager) {
+                    await this.sceneManager.changeScene('cena2_rua', 'glitch');
+                }
+            }, 2000);
         }
     }
 
-    public handleClick(intersects: THREE.Intersection[]): void {
+    public async handleClick(intersects: THREE.Intersection[]): Promise<void> {
         if (!intersects.length) {
             // console.log('No objects clicked');
             return;
@@ -274,7 +277,7 @@ export class Cena1TrabalhoScene extends Scene {
 
         if (clickedObject.name === "Notebook") {
             console.log('Notebook clicked - toggling');
-            this.toggleNotebook();
+            await this.toggleNotebook();
         }
     }
 }

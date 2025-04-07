@@ -7,9 +7,24 @@ export class AssetLoader {
     private audioLoader: THREE.AudioLoader;
     private textureCache: Map<string, THREE.Texture>;
     private audioCache: Map<string, AudioBuffer>;
+    private _isLoadComplete: boolean = false; // Flag to track initial load completion
 
     constructor() {
-        this.loadingManager = new THREE.LoadingManager();
+        this.loadingManager = new THREE.LoadingManager(
+            // onLoad callback for the manager itself
+            () => {
+                console.log('[AssetLoader] Initial loading complete (LoadingManager onLoad).');
+                this._isLoadComplete = true;
+            },
+            // onProgress (optional)
+            undefined,
+            // onError callback for the manager itself
+            (url) => {
+                console.error(`[AssetLoader] Loading error on URL: ${url} (LoadingManager onError).`);
+                // We might still consider loading "complete" even on error, depending on desired behavior
+                // this._isLoadComplete = true; // Uncomment if errors shouldn't block completion check
+            }
+        );
         this.textureLoader = new THREE.TextureLoader(this.loadingManager);
         this.textureCache = new Map();
         this.audioCache = new Map();
@@ -116,8 +131,38 @@ export class AssetLoader {
     }
 
     public isEverythingLoaded(): Promise<void> {
-        return new Promise((resolve) => {
-            this.loadingManager.onLoad = () => resolve();
+        console.log(`[AssetLoader] isEverythingLoaded called. Current _isLoadComplete flag: ${this._isLoadComplete}`);
+
+        // If the main LoadingManager already reported completion, resolve immediately.
+        if (this._isLoadComplete) {
+            console.log(`[AssetLoader] Load already complete. Resolving immediately.`);
+            return Promise.resolve();
+        }
+
+        // Otherwise, return a promise that waits for the LoadingManager's callbacks.
+        // This handles cases where this is called *while* loading is still in progress.
+        console.log(`[AssetLoader] Load not yet complete. Setting up promise with onLoad/onError handlers.`);
+        return new Promise((resolve, reject) => {
+            // Store original handlers if they exist (assigned in constructor)
+            const originalOnLoad = this.loadingManager.onLoad;
+            const originalOnError = this.loadingManager.onError;
+
+            // Handler for successful loading completion for *this specific check*
+            this.loadingManager.onLoad = () => {
+                console.log(`[AssetLoader] loadingManager.onLoad triggered (isEverythingLoaded). Resolving promise.`);
+                this._isLoadComplete = true; // Ensure flag is set
+                if (originalOnLoad) originalOnLoad(); // Call constructor's handler
+                resolve();
+            };
+
+            // Handler for loading errors for *this specific check*
+            this.loadingManager.onError = (url) => {
+                console.error(`[AssetLoader] loadingManager.onError triggered for URL: ${url} (isEverythingLoaded). Rejecting promise.`);
+                 if (originalOnError) originalOnError(url); // Call constructor's handler
+                // Decide if errors should mark loading as "complete" for this check
+                // this._isLoadComplete = true;
+                reject(new Error(`Asset loading failed for URL: ${url}`));
+            };
         });
     }
 }
