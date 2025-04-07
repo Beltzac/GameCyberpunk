@@ -275,6 +275,15 @@ private currentPostIndex: number = 0;
                 this.phoneSprite.position.set(0, -5, 0.2); // Phone slightly in front of hand
                this.threeScene.add(this.phoneSprite);
 
+
+                   // <<< ADDED: Create a background plane for the phone screen area >>>
+                   const phoneBgGeometry = new THREE.PlaneGeometry(3.4, 5);
+                   const phoneBgMaterial = new THREE.MeshBasicMaterial({ color: 0xcccfd9 });
+                   const phoneBackgroundPlane = new THREE.Mesh(phoneBgGeometry, phoneBgMaterial);
+                   phoneBackgroundPlane.scale.set(1, 1, 1); // Match phone scale
+                   phoneBackgroundPlane.position.set(this.phoneSprite.position.x , this.phoneSprite.position.y + 4.9 , 0.18); // Position behind posts (posts at 0.19)
+                   this.threeScene.add(phoneBackgroundPlane);
+                   // <<< END ADDED >>>
                // <<< MODIFIED: Create post container and stack posts vertically >>>
                this.postContainer = new THREE.Group();
                // this.phoneSprite.add(this.postContainer); // Add container to phone - REMOVED
