@@ -88,6 +88,12 @@ export class Cena2RuaScene extends Scene {
             ];
             // <<< END ADDED >>>
 
+            await this.gameEngine.soundManager.loadSound(
+                'jazz',
+                'cena_2_rua/sounds/jazz.mp3',
+                true
+            );
+
 
             // Create background sprite (full screen, non-interactive)
             const backgroundMaterial = new THREE.SpriteMaterial({ map: backgroundTexture });
@@ -154,7 +160,8 @@ export class Cena2RuaScene extends Scene {
 
 
     async onEnter(): Promise<void> {
-
+        console.log('onEnter');
+        await this.gameEngine.soundManager.playBackground('jazz', 1.0);
     }
 
     async onExit(): Promise<void> {

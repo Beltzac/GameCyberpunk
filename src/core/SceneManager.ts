@@ -37,7 +37,6 @@ export class SceneManager {
         // Load all glitch sounds if SoundManager is available
         if (this.gameEngine.soundManager) {
             const soundFiles = [
-                'sounds/glitch_0.aiff',
                 'sounds/glitch_1.wav',
                 'sounds/glitch_2.wav',
                 'sounds/glitch_3.wav',
@@ -209,8 +208,13 @@ export class SceneManager {
 
         // Initialize the new scene if not already initialized
         if (!this.initializedScenes.has(name)) {
-            this._currentScene.init();
+            await this._currentScene.init();
             this.initializedScenes.add(name);
+        }
+
+        // Wait for assets to load if AssetLoader is provided
+        if (this.gameEngine.assetLoader) {
+            await this.gameEngine.assetLoader.isEverythingLoaded();
         }
 
         // Notify listeners about scene change
@@ -295,10 +299,7 @@ export class SceneManager {
             await this.setScene(sceneId);
             console.log(`[SceneManager] Scene change to "${sceneId}" completed`);
 
-            // Wait for assets to load if AssetLoader is provided
-            if (assetLoader) {
-                //await assetLoader.isEverythingLoaded();
-            }
+
 
             // Transition in new scene
             console.log(`[SceneManager] Beginning transition into new scene`);
