@@ -4,18 +4,20 @@ import { Scene } from '../core/Scene';
 import { AssetLoader } from '../utils/AssetLoader';
 import { SceneManager } from '../core/SceneManager';
 import { Cena2RuaScene } from './Cena2RuaScene';
+import { GameEngine } from '../core/GameEngine'; // Import GameEngine
 
 export class Cena1TrabalhoScene extends Scene {
     private assetLoader: AssetLoader;
     private sceneManager: SceneManager;
+    // No need to store gameEngine here, it's in the base class
     private backgroundSprite: THREE.Sprite | null = null;
     private notebookSprite: THREE.Sprite | null = null;
     private notebookOpenTexture: THREE.Texture | null = null;
     private notebookClosedTexture: THREE.Texture | null = null;
     private isNotebookOpen: boolean = true;
 
-    constructor(assetLoader: AssetLoader, sceneManager: SceneManager) {
-        super();
+    constructor(gameEngine: GameEngine, assetLoader: AssetLoader, sceneManager: SceneManager) {
+        super(gameEngine); // Pass gameEngine to base constructor
         this.assetLoader = assetLoader;
         this.sceneManager = sceneManager;
         console.log("Cena1TrabalhoScene created");
@@ -50,7 +52,11 @@ export class Cena1TrabalhoScene extends Scene {
             // Create background sprite (full screen, non-interactive)
             const backgroundMaterial = new THREE.SpriteMaterial({ map: backgroundTexture });
             this.backgroundSprite = new THREE.Sprite(backgroundMaterial);
-            this.backgroundSprite.scale.set(window.innerWidth / 100, window.innerHeight / 100, 1);
+            // Scale background to camera view
+            const camera = this.gameEngine.camera;
+            const scaleX = (camera.right - camera.left);
+            const scaleY = (camera.top - camera.bottom);
+            this.backgroundSprite.scale.set(scaleX, scaleY, 1);
             this.backgroundSprite.userData.isBackground = true; // Mark as background
             this.threeScene.add(this.backgroundSprite);
 

@@ -1,11 +1,15 @@
 // src/core/Scene.ts
 import * as THREE from 'three';
 
+import { GameEngine } from './GameEngine'; // Import GameEngine
+
 export abstract class Scene {
     public threeScene: THREE.Scene; // Made public for direct access
+    protected gameEngine: GameEngine; // Store reference to GameEngine
 
-    constructor() {
+    constructor(gameEngine: GameEngine) {
         this.threeScene = new THREE.Scene();
+        this.gameEngine = gameEngine;
         console.log(`Base Scene created`);
     }
 

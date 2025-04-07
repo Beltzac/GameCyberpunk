@@ -26,15 +26,16 @@ const gameEngine = new GameEngine(canvas);
 // 3. Create Scene Instances
 // Pass any required managers (like AssetLoader, UIManager) to scene constructors if needed
 
-const cena1TrabalhoScene = new Cena1TrabalhoScene(gameEngine.assetLoader, gameEngine.sceneManager);
-const cena2RuaScene = new Cena2RuaScene(gameEngine.assetLoader, gameEngine.sceneManager);
+const cena1TrabalhoScene = new Cena1TrabalhoScene(gameEngine, gameEngine.assetLoader, gameEngine.sceneManager);
+const cena2RuaScene = new Cena2RuaScene(gameEngine, gameEngine.assetLoader, gameEngine.sceneManager);
 
 // 4. Add Scenes to the Scene Manager
 gameEngine.sceneManager.addScene('cena1_trabalho', cena1TrabalhoScene);
 gameEngine.sceneManager.addScene('cena2_rua', cena2RuaScene);
 
 // 5. Set the Initial Scene
-gameEngine.sceneManager.setScene('cena1_trabalho'); // Start with work scene
+//meEngine.sceneManager.setScene('cena1_trabalho'); // Start with work scene
+gameEngine.sceneManager.setScene('cena2_rua'); // Start with work scene
 
 // 6. Start the Game Engine's Main Loop
 gameEngine.start();

@@ -6,10 +6,12 @@ import { GameState } from './GameState';
 import { Scene } from './Scene'; // Import base Scene type
 import { AssetLoader } from '../utils/AssetLoader';
 
+const CAMERA_FRUSTUM_SIZE = 8; // Centralized camera frustum size
+
 export class GameEngine {
     private canvas: HTMLCanvasElement;
     private renderer: THREE.WebGLRenderer;
-    private camera: THREE.OrthographicCamera;
+    public camera: THREE.OrthographicCamera; // Made public
     private clock: THREE.Clock;
 
     public gameState: GameState;
@@ -36,7 +38,7 @@ export class GameEngine {
 
         // Basic Camera
         const aspect = window.innerWidth / window.innerHeight;
-        const frustumSize = 5; // Adjust as needed
+        const frustumSize = CAMERA_FRUSTUM_SIZE; // Use constant
 
         this.camera = new THREE.OrthographicCamera(
             frustumSize * aspect / - 2,
@@ -129,7 +131,7 @@ export class GameEngine {
     private onWindowResize(): void {
         // Update camera
         const aspect = window.innerWidth / window.innerHeight;
-        const frustumSize = 5;
+        const frustumSize = CAMERA_FRUSTUM_SIZE; // Use constant
 
         this.camera.left = frustumSize * aspect / - 2;
         this.camera.right = frustumSize * aspect / 2;
