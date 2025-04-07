@@ -402,7 +402,7 @@ export class Cena2RuaScene extends Scene {
                 let accumulatedHeight = 0;
                 const postSpacing = 1.0; // Vertical space between posts
 
-                for (let i = 0; i < this.postTextures.length; i++) {
+                for (let i = 0; i < 1; i++) {
                     const texture = this.postTextures[i]; // Get texture first
 
                     // Calculate scale based on phone scale, maintaining aspect ratio
