@@ -277,8 +277,9 @@ private currentPostIndex: number = 0;
 
                // <<< MODIFIED: Create post container and stack posts vertically >>>
                this.postContainer = new THREE.Group();
-               this.phoneSprite.add(this.postContainer); // Add container to phone
-               this.postContainer.position.set(0, 0, 0.01); // Position container slightly in front of phone bg
+               // this.phoneSprite.add(this.postContainer); // Add container to phone - REMOVED
+               this.threeScene.add(this.postContainer); // Add container directly to the scene
+               this.postContainer.position.set(0, 0, 0.19); // Position container behind the phone (phone is at 0.2)
 
                this.postSprites = []; // Clear previous sprites if any
                let accumulatedHeight = 0;
@@ -289,12 +290,12 @@ private currentPostIndex: number = 0;
                        map: this.postTextures[i],
                        transparent: true,
                        opacity: 1,
-                       depthTest: false // Ensure posts render on top
+                       // depthTest: false // Ensure posts render on top - REMOVED to respect Z-order
                    });
                    const postSprite = new THREE.Sprite(postMaterial);
 
                    // Calculate scale based on phone scale, maintaining aspect ratio
-                   const paddingFactor = 0.07; // Post width occupies 80% of the phone's inner space width
+                   const paddingFactor = 0.5; // Post width occupies 80% of the phone's inner space width
                    const postScaleX = phoneScaleX * paddingFactor;
 
                    // Get texture aspect ratio
