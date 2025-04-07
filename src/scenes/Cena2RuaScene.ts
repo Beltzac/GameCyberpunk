@@ -48,6 +48,8 @@ private currentPostIndex: number = 0;
     private scrollDuration: number = 0.5; // seconds
     private targetPostIndex: number = 0;
     // <<< END ADDED >>>
+    private phoneBackgroundPlane: THREE.Mesh | null = null; // Reference to the gray background
+    private postClippingPlanes: THREE.Plane[] = []; // Planes for masking posts
 
 
     constructor(gameEngine: GameEngine, assetLoader: AssetLoader, sceneManager: SceneManager) {
@@ -195,9 +197,30 @@ private currentPostIndex: number = 0;
                 // Animate phone up with easing
                 const elapsed = this.timeAccumulator - this.animationStartTime;
                 const progress = Math.min(elapsed / this.animationDuration, 1);
-                this.phoneSprite.position.y = -5 + Easing.easeOutQuad(progress) * 5;
+                const currentY = -5 + Easing.easeOutQuad(progress) * 5;
+                this.phoneSprite.position.y = currentY;
+
+                // <<< ADDED: Update background and mask plane positions >>>
+                if (this.phoneBackgroundPlane) {
+                    this.phoneBackgroundPlane.position.y = currentY;
+                }
+                // Update background plane position (Clipping planes are local to postContainer, no need to update them here)
+                if (this.phoneBackgroundPlane) {
+                    this.phoneBackgroundPlane.position.y = currentY;
+                }
+                // <<< END ADDED >>>
+
                 if (progress >= 1) {
-                    this.phoneSprite.position.y = 0;
+                    this.phoneSprite.position.y = 0; // Ensure final position
+                    // <<< ADDED: Ensure final positions for background >>>
+                    if (this.phoneBackgroundPlane) {
+                        this.phoneBackgroundPlane.position.y = 0;
+                    }
+                    // <<< END ADDED >>>
+                    // <<< ADDED: Ensure final positions for background and mask >>>
+                    if (this.phoneBackgroundPlane) {
+                        this.phoneBackgroundPlane.position.y = 0;
+                    }
                    this.animationState = 'phoneIdle';
                    // <<< MODIFIED: Set initial post container position >>>
                    if (this.postContainer) {
@@ -276,13 +299,25 @@ private currentPostIndex: number = 0;
                this.threeScene.add(this.phoneSprite);
 
 
-                   // <<< ADDED: Create a background plane for the phone screen area >>>
-                   const phoneBgGeometry = new THREE.PlaneGeometry(3.4, 5);
+                   // <<< MODIFIED: Create a background plane for the phone screen area >>>
+                   // Calculate the visual size of the screen area based on post scaling
+                   const screenWidth = phoneScaleX * 0.53; // Match postScaleX calculation base (paddingFactor = 0.5)
+                   const screenHeight = phoneScaleY * 0.56; // Adjust height slightly if needed, or derive from aspect ratio/padding
+                   const phoneBgGeometry = new THREE.PlaneGeometry(screenWidth, screenHeight); // Use calculated size
                    const phoneBgMaterial = new THREE.MeshBasicMaterial({ color: 0xcccfd9 });
-                   const phoneBackgroundPlane = new THREE.Mesh(phoneBgGeometry, phoneBgMaterial);
-                   phoneBackgroundPlane.scale.set(1, 1, 1); // Match phone scale
-                   phoneBackgroundPlane.position.set(this.phoneSprite.position.x , this.phoneSprite.position.y + 4.9 , 0.18); // Position behind posts (posts at 0.19)
-                   this.threeScene.add(phoneBackgroundPlane);
+                   this.phoneBackgroundPlane = new THREE.Mesh(phoneBgGeometry, phoneBgMaterial); // Store reference
+                   // this.phoneBackgroundPlane.scale.set(1, 1, 1); // Geometry defines size now
+                   this.phoneBackgroundPlane.position.set(this.phoneSprite.position.x, this.phoneSprite.position.y, 0.18); // Initial position behind posts (posts at 0.19)
+                   this.threeScene.add(this.phoneBackgroundPlane);
+                   // <<< ADDED: Define Clipping Planes based on background plane geometry >>>
+                   const halfWidth = screenWidth / 2;
+                   const halfHeight = screenHeight / 2;
+                   this.postClippingPlanes = [
+                       new THREE.Plane(new THREE.Vector3(0, -1, 0), halfHeight), // Top edge
+                       new THREE.Plane(new THREE.Vector3(0, 1, 0), halfHeight),  // Bottom edge
+                       new THREE.Plane(new THREE.Vector3(-1, 0, 0), halfWidth), // Right edge
+                       new THREE.Plane(new THREE.Vector3(1, 0, 0), halfWidth)   // Left edge
+                   ];
                    // <<< END ADDED >>>
                // <<< MODIFIED: Create post container and stack posts vertically >>>
                this.postContainer = new THREE.Group();
@@ -299,7 +334,12 @@ private currentPostIndex: number = 0;
                        map: this.postTextures[i],
                        transparent: true,
                        opacity: 1,
-                       // depthTest: false // Ensure posts render on top - REMOVED to respect Z-order
+                       depthTest: false, // Keep false
+
+                       // <<< ADDED: Clipping plane configuration >>>
+                       clippingPlanes: this.postClippingPlanes,
+                       clipIntersection: false // Render pixels *inside* the intersection of the planes
+                       // <<< END ADDED >>>
                    });
                    const postSprite = new THREE.Sprite(postMaterial);
 
