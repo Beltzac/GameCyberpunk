@@ -188,9 +188,15 @@ private currentPostIndex: number = 0;
                     this.handSprite.position.y = -7;
                     this.animationState = 'phoneMovingUp';
                     this.animationStartTime = this.timeAccumulator;
-                    // Make phone visible
+                    // Make phone, background, and posts visible
                     if (this.phoneSprite?.material) {
                         (this.phoneSprite.material as THREE.SpriteMaterial).opacity = 1;
+                    }
+                    if (this.phoneBackgroundPlane) {
+                        this.phoneBackgroundPlane.visible = true;
+                    }
+                    if (this.postContainer) {
+                        this.postContainer.visible = true;
                     }
                 }
             } else if (this.animationState === 'phoneMovingUp' && this.phoneSprite) {
@@ -200,43 +206,47 @@ private currentPostIndex: number = 0;
                 const currentY = -5 + Easing.easeOutQuad(progress) * 5;
                 this.phoneSprite.position.y = currentY;
 
-                // <<< ADDED: Update background and mask plane positions >>>
+                // <<< ADDED: Update background and post container positions >>>
                 if (this.phoneBackgroundPlane) {
                     this.phoneBackgroundPlane.position.y = currentY;
                 }
-                // Update background plane position (Clipping planes are local to postContainer, no need to update them here)
-                if (this.phoneBackgroundPlane) {
-                    this.phoneBackgroundPlane.position.y = currentY;
+                if (this.postContainer) {
+                    // Keep the container's Y relative to the phone's center (which is moving to Y=0)
+                    // Since the container's initial Y is 0 relative to the scene,
+                    // and the phone starts at -5 and moves to 0, the container should also move from -5 to 0.
+                    this.postContainer.position.y = currentY;
                 }
                 // <<< END ADDED >>>
 
-                if (progress >= 1) {
-                    this.phoneSprite.position.y = 0; // Ensure final position
-                    // <<< ADDED: Ensure final positions for background >>>
-                    if (this.phoneBackgroundPlane) {
-                        this.phoneBackgroundPlane.position.y = 0;
-                    }
-                    // <<< END ADDED >>>
-                    // <<< ADDED: Ensure final positions for background and mask >>>
-                    if (this.phoneBackgroundPlane) {
-                        this.phoneBackgroundPlane.position.y = 0;
-                    }
-                   this.animationState = 'phoneIdle';
-                   // <<< MODIFIED: Set initial post container position >>>
-                   if (this.postContainer) {
-                       // Position container so the first post (index 0) is centered
-                       const firstPost = this.postSprites[0];
-                       if (firstPost) {
-                           this.postContainer.position.y = -firstPost.position.y; // Move container up by the first post's offset
-                       } else {
-                           this.postContainer.position.y = 0;
-                       }
-                       this.currentPostIndex = 0;
-                       this.targetPostIndex = 0;
-                       this.isScrollingPosts = false;
-                   }
-                   // <<< END MODIFIED >>>
-               }
+                 if (progress >= 1) {
+                     // --- Step 1: Set Final Animated Positions ---
+                     // Ensure final positions are exactly 0 first
+                     if (this.phoneSprite) {
+                         this.phoneSprite.position.y = 0;
+                     }
+                     if (this.phoneBackgroundPlane) {
+                         this.phoneBackgroundPlane.position.y = 0;
+                     }
+                     if (this.postContainer) {
+                         this.postContainer.position.y = 0; // Set final animated position to 0 first
+                     }
+
+                     // --- Step 2: Change Animation State ---
+                     this.animationState = 'phoneIdle';
+                     this.currentPostIndex = 0;
+                     this.targetPostIndex = 0;
+                     this.isScrollingPosts = false;
+
+                     // --- Step 3: Post-Animation Adjustment for Centering ---
+                     // Now, adjust the container's final Y position so the first post is centered
+                     if (this.postContainer && this.postSprites.length > 0) {
+                         const firstPost = this.postSprites[0];
+                         // The container is at Y=0. The first post is at firstPost.position.y within it.
+                         // To center the first post at the container's origin (Y=0), shift the container up.
+                         this.postContainer.position.y = -firstPost.position.y;
+                     }
+                     // If no posts, Y remains 0 (already set in Step 1)
+                 }
             } else if (this.animationState === 'idle') {
                 // Normal hand bobbing animation
                 const bobProgress = Easing.easeInOutSine(Math.sin(this.timeAccumulator * 5) * 0.5 + 0.5);
@@ -307,7 +317,9 @@ private currentPostIndex: number = 0;
                    const phoneBgMaterial = new THREE.MeshBasicMaterial({ color: 0xcccfd9 });
                    this.phoneBackgroundPlane = new THREE.Mesh(phoneBgGeometry, phoneBgMaterial); // Store reference
                    // this.phoneBackgroundPlane.scale.set(1, 1, 1); // Geometry defines size now
-                   this.phoneBackgroundPlane.position.set(this.phoneSprite.position.x, this.phoneSprite.position.y, 0.18); // Initial position behind posts (posts at 0.19)
+                   // Set initial position to match the phone's starting position
+                   this.phoneBackgroundPlane.position.set(this.phoneSprite.position.x, this.phoneSprite.position.y, 0.18);
+                   this.phoneBackgroundPlane.visible = false; // Start invisible
                    this.threeScene.add(this.phoneBackgroundPlane);
                    // <<< ADDED: Define Clipping Planes based on background plane geometry >>>
                    const halfWidth = screenWidth / 2;
@@ -321,9 +333,15 @@ private currentPostIndex: number = 0;
                    // <<< END ADDED >>>
                // <<< MODIFIED: Create post container and stack posts vertically >>>
                this.postContainer = new THREE.Group();
-               // this.phoneSprite.add(this.postContainer); // Add container to phone - REMOVED
-               this.threeScene.add(this.postContainer); // Add container directly to the scene
-               this.postContainer.position.set(0, 0, 0.19); // Position container behind the phone (phone is at 0.2)
+               // Set initial position to match the phone's starting position BEFORE adding to scene
+               if (this.phoneSprite) { // Add null check for safety
+                    this.postContainer.position.set(this.phoneSprite.position.x, this.phoneSprite.position.y, 0.19);
+               } else {
+                    // Fallback position if phoneSprite is somehow null (shouldn't happen here)
+                    this.postContainer.position.set(0, -5, 0.19);
+               }
+               this.postContainer.visible = false; // Start invisible
+               this.threeScene.add(this.postContainer); // Add container directly to the scene AFTER setting position
 
                this.postSprites = []; // Clear previous sprites if any
                let accumulatedHeight = 0;
