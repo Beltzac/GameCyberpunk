@@ -473,18 +473,14 @@ export class Cena2RuaScene extends Scene {
                 // <<< END MODIFIED >>>
             }
         } else if (clickedObject.name == "ThoughtButton1") {
-            setTimeout(async () => {
-                if (this.sceneManager) {
-                    await this.sceneManager.changeScene('cena1_trabalho', 'glitch');
-                }
-            }, 1000);
+            if (this.sceneManager) {
+                await this.sceneManager.changeScene('cena1_trabalho', 'glitch', 1000);
+            }
         }
         else if (clickedObject.name == "ThoughtButton2") {
-            setTimeout(async () => {
-                if (this.sceneManager) {
-                    await this.sceneManager.changeScene('cena3_galeria', 'glitch');
-                }
-            }, 1000);
+            if (this.sceneManager) {
+                await this.sceneManager.changeScene('cena3_galeria', 'glitch', 1000);
+            }
         }
         // <<< MODIFIED: Handle clicks on the phone OR the post to INITIATE SCROLL >>>
         else if ((clickedObject === this.phoneSprite || clickedObject.name.startsWith("Post")) && this.animationState === 'phoneIdle' && !this.isScrollingPosts) {

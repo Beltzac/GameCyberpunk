@@ -209,11 +209,9 @@ export class Cena1TrabalhoScene extends Scene {
         if (!this.isNotebookOpen) {
             console.log('Preparing to transition to street scene...');
 
-            setTimeout(async () => {
-                if (this.sceneManager) {
-                    await this.sceneManager.changeScene('cena2_rua', 'glitch');
-                }
-            }, 2000);
+            if (this.sceneManager) {
+                await this.sceneManager.changeScene('cena2_rua', 'glitch', 2000);
+            }
         }
     }
 

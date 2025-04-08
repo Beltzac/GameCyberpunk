@@ -6,6 +6,10 @@ import { GameState } from './GameState';
 import { AssetLoader } from '../utils/AssetLoader';
 import { Easing } from '../utils/Easing';
 
+function delay(ms: number) {
+    return new Promise( resolve => setTimeout(resolve, ms) );
+}
+
 export type TransitionType = 'fade' | 'glitch';
 export class SceneManager {
     private scenes: Map<string, Scene>;
@@ -237,8 +241,8 @@ export class SceneManager {
 
     private nextSceneId: string | null = null;
 
-    public async changeScene(sceneId: string, transitionType: TransitionType = 'fade', assetLoader?: AssetLoader): Promise<void> {
-        console.log(`[SceneManager] Starting transition to scene "${sceneId}" with ${transitionType} transition`);
+    public async changeScene(sceneId: string, transitionType: TransitionType = 'fade', delayTime: number = 0): Promise<void> {
+        console.log(`[SceneManager] Starting transition to scene "${sceneId}" with ${transitionType} transition${delayTime > 0 ? ` after ${delayTime}ms delay` : ''}`);
 
         if (this.isTransitioning) {
             if (this.nextSceneId === sceneId) {
@@ -259,6 +263,10 @@ export class SceneManager {
                 console.error(`[SceneManager] Error calling setScene directly after failed readiness check:`, error);
             }
             return; // Exit after direct switch
+        }
+
+        if (delayTime > 0) {
+            await delay(delayTime);
         }
 
         this.nextSceneId = sceneId;

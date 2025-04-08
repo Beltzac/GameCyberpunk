@@ -53,7 +53,7 @@ export class StartMenuScene extends Scene {
                 context.textBaseline = 'middle';
 
                 // Rotate canvas 5 degrees before drawing text
-                context.translate(canvas.width/2, canvas.height/2);
+                context.translate(canvas.width / 2, canvas.height / 2);
                 context.rotate(-10 * Math.PI / 180);
                 context.fillText('AION', -70, -50);
                 context.fillText('♦☻♥', 70, 50);
@@ -270,11 +270,9 @@ export class StartMenuScene extends Scene {
                 }
 
                 // Transition to scene 1 with fade effect after short delay
-                setTimeout(async () => {
-                    if (this.sceneManager) {
-                        await this.sceneManager.changeScene('cena1_trabalho', 'fade');
-                    }
-                }, 1000);
+                if (this.sceneManager) {
+                    await this.sceneManager.changeScene('cena1_trabalho', 'fade', 1000);
+                }
             }
         }
     }

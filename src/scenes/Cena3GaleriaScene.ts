@@ -148,13 +148,13 @@ export class Cena3GaleriaScene extends Scene {
         });
 
         // Transition after delay
-        setTimeout(async () => {
-            if (this.sceneManager) {
-                await this.sceneManager.changeScene(
-                    character === 'kairos' ? 'cena_kairos' : 'cena_other',
-                    'fade'
-                );
-            }
-        }, 1000);
+
+        if (this.sceneManager) {
+            await this.sceneManager.changeScene(
+                character === 'kairos' ? 'cena_kairos' : 'cena_other',
+                'fade',
+                1000
+            );
+        }
     }
 }
