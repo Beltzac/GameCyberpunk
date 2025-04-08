@@ -36,6 +36,43 @@ export class StartMenuScene extends Scene {
             // Create simple background
             const backgroundTexture = await this.assetLoader.loadTexture('assets/start_menu/background.png');
 
+            // Create text texture
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 256;
+            const context = canvas.getContext('2d');
+            if (context) {
+                // Load font
+                const fontFace = new (window as any).FontFace('Thata-Regular', 'url(assets/fonts/Thata-Regular-2024-08-15.ttf)');
+                await (document as any).fonts.add(fontFace);
+                await fontFace.load();
+
+                context.fillStyle = '#ffcc00';
+                context.font = '200px Thata-Regular';
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+
+                // Rotate canvas 5 degrees before drawing text
+                context.translate(canvas.width/2, canvas.height/2);
+                context.rotate(-10 * Math.PI / 180);
+                context.fillText('AION', -70, -50);
+                context.fillText('♦ ☻ ♥', 70, 50);
+                context.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+
+                const texture = new THREE.Texture(canvas);
+                texture.needsUpdate = true;
+
+                const material = new THREE.SpriteMaterial({
+                    map: texture,
+                    transparent: true
+                });
+                const sprite = new THREE.Sprite(material);
+                sprite.scale.set(10 * 3, 2.5 * 3, 1);
+                sprite.position.set(0, 0, 0.1);
+                sprite.rotation.z = 20 * (Math.PI / 180); // Rotate 5 degrees
+                this.threeScene.add(sprite);
+            }
+
             // Load button textures
             this.buttonNormalTexture = await this.assetLoader.loadTexture('assets/start_menu/button_normal.png');
             this.buttonHoverTexture = await this.assetLoader.loadTexture('assets/start_menu/button_hover.png');
