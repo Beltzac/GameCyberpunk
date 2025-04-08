@@ -26,6 +26,10 @@ export class Cena3GaleriaScene extends Scene {
         console.log("Cena3GaleriaScene initializing...");
 
         try {
+            // Load 3D model
+            const plantaPack = await this.assetLoader.loadModel('cena_3_galeria/planta_pack.glb');
+            this.threeScene.add(plantaPack);
+
             // Load background
             const backgroundTexture = await this.assetLoader.loadTexture('assets/cena_3_galeria/background.png');
             this.backgroundSprite = this.createBackground(backgroundTexture);

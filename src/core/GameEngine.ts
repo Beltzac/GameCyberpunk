@@ -11,6 +11,9 @@ const CAMERA_FRUSTUM_SIZE = 8; // Centralized camera frustum size
 export class GameEngine {
     private canvas: HTMLCanvasElement;
     private renderer: THREE.WebGLRenderer;
+    public getRenderer(): THREE.WebGLRenderer {
+        return this.renderer;
+    }
     public camera: THREE.OrthographicCamera; // Made public
     private clock: THREE.Clock;
 
@@ -56,7 +59,7 @@ export class GameEngine {
         this.clock = new THREE.Clock();
 
         // Core Managers
-        this.assetLoader = new AssetLoader(); // Initialize assetLoader *before* inputManager
+        this.assetLoader = new AssetLoader(this); // Initialize assetLoader *before* inputManager
         this.soundManager = new SoundManager(this.camera, this.assetLoader);
         this.gameState = new GameState();
         this.sceneManager = new SceneManager(this.gameState, this);

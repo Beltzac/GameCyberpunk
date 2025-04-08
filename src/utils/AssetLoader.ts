@@ -1,5 +1,9 @@
 // src/utils/AssetLoader.ts
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { GameEngine } from '../core/GameEngine';
 
 export class AssetLoader {
     private loadingManager: THREE.LoadingManager;
@@ -7,12 +11,15 @@ export class AssetLoader {
     private audioLoader: THREE.AudioLoader;
     private textureCache: Map<string, THREE.Texture>;
     private audioCache: Map<string, AudioBuffer>;
+    private modelCache: Map<string, THREE.Group>;
     private defaultTexture: THREE.Texture;
+    private defaultAudioBuffer: AudioBuffer;
+    private ktx2Loader: KTX2Loader;
 
     private _isLoadComplete: boolean = false; // Flag to track initial load completion
     private pendingPromises: Promise<any>[] = []; // Track all pending load operations
 
-    constructor() {
+    constructor(private gameEngine: GameEngine) {
         this.defaultTexture = this.createDefaultTexture();
         this.defaultTexture.name = 'default_checkered';
 
@@ -34,7 +41,16 @@ export class AssetLoader {
         this.textureLoader = new THREE.TextureLoader(this.loadingManager);
         this.textureCache = new Map();
         this.audioCache = new Map();
+        this.modelCache = new Map();
         this.audioLoader = new THREE.AudioLoader(this.loadingManager);
+
+        // Initialize KTX2 loader for GLTF models
+        this.ktx2Loader = new KTX2Loader(this.loadingManager)
+            .setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/libs/basis/')
+            .detectSupport(this.gameEngine.getRenderer());
+        // Create default silent audio buffer
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        this.defaultAudioBuffer = audioContext.createBuffer(1, 1, 22050); // 1 channel, 1 sample, 22.05kHz
     }
 
     private createDefaultTexture(): THREE.Texture {
@@ -136,7 +152,53 @@ export class AssetLoader {
                         errorObject: error,
                         stack: error instanceof Error ? error.stack : undefined
                     });
-                    reject(new Error(`Failed to load audio from ${cleanPath}: ${errorMessage}`));
+                    console.error(`AssetLoader: Using default silent audio for ${cleanPath} due to error: ${errorMessage}`);
+                    this.audioCache.set(url, this.defaultAudioBuffer);
+                    resolve(this.defaultAudioBuffer);
+                }
+            );
+        });
+        this.pendingPromises.push(loadPromise);
+        return loadPromise;
+    }
+
+    public async loadModel(url: string): Promise<THREE.Group> {
+        // Check cache first
+        if (this.modelCache.has(url)) {
+            return this.modelCache.get(url)!;
+        }
+
+        const gltfLoader = new GLTFLoader(this.loadingManager)
+            .setKTX2Loader(this.ktx2Loader)
+            .setMeshoptDecoder(MeshoptDecoder);
+        const loadPromise = new Promise<THREE.Group>((resolve, reject) => {
+            const cleanPath = url.startsWith('assets/') ? url : `assets/${url}`;
+            console.log(`AssetLoader: Loading model from resolved path: ${cleanPath}`);
+
+            gltfLoader.load(
+                cleanPath,
+                (gltf) => {
+                    console.log(`AssetLoader: Successfully loaded model from ${cleanPath}`);
+                    this.modelCache.set(url, gltf.scene);
+                    resolve(gltf.scene);
+                },
+                undefined,
+                (error: unknown) => {
+                    console.error(`AssetLoader: Error loading model from ${cleanPath}:`, error);
+                    let errorMessage = 'Unknown error';
+                    if (error instanceof Error) {
+                        errorMessage = error.message;
+                    } else if (error && typeof error === 'object' && 'type' in error) {
+                        errorMessage = 'Network or file loading error';
+                    } else {
+                        errorMessage = String(error);
+                    }
+                    console.error(`AssetLoader: Full error details for ${cleanPath}:`, {
+                        errorType: typeof error,
+                        errorObject: error,
+                        stack: error instanceof Error ? error.stack : undefined
+                    });
+                    reject(new Error(`Failed to load model from ${cleanPath}: ${errorMessage}`));
                 }
             );
         });
@@ -154,7 +216,13 @@ export class AssetLoader {
                 if (asset.type === 'texture') {
                     const texture = await this.loadTexture(asset.url);
                     loadedAssets.set(asset.name, texture);
-                } // Add cases for 'model', 'audio', etc.
+                } else if (asset.type === 'model') {
+                    const model = await this.loadModel(asset.url);
+                    loadedAssets.set(asset.name, model);
+                } else if (asset.type === 'audio') {
+                    const audio = await this.loadAudio(asset.url);
+                    loadedAssets.set(asset.name, audio);
+                }
             } catch (error) {
                 console.error(`AssetLoader: Failed to load asset ${asset.name} from ${asset.url}`, error);
             }
