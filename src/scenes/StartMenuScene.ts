@@ -15,18 +15,37 @@ export class StartMenuScene extends Scene {
     private buttonNormalTexture: THREE.Texture | null = null;
     private buttonHoverTexture: THREE.Texture | null = null;
 
-    // Spark particles properties
+    // Particles properties
     private sparks: THREE.Points | null = null;
     private sparkGeometry = new THREE.BufferGeometry();
-    private sparkMaterial = new THREE.PointsMaterial({
-        color: 0xffaa00,
-        size: 0.1,
-        transparent: true,
-        opacity: 0.8,
-        depthTest: false,
-        blending: THREE.AdditiveBlending
-    });
+    private sparkMaterials = [
+        new THREE.PointsMaterial({ // Gold sparks
+            color: 0xffaa00,
+            size: 0.8,
+            transparent: true,
+            opacity: 0.8,
+            depthTest: false,
+            blending: THREE.AdditiveBlending
+        }),
+        new THREE.PointsMaterial({ // Red hearts
+            color: 0xff3366,
+            size: 1.0,
+            transparent: true,
+            opacity: 0.9,
+            depthTest: false,
+            blending: THREE.AdditiveBlending
+        }),
+        new THREE.PointsMaterial({ // Blue stars
+            color: 0x3399ff,
+            size: 0.9,
+            transparent: true,
+            opacity: 0.85,
+            depthTest: false,
+            blending: THREE.AdditiveBlending
+        })
+    ];
     private sparkVelocities: Float32Array | null = null;
+    private sparkTypes: Float32Array | null = null;
 
     constructor(gameEngine: GameEngine, assetLoader: AssetLoader, sceneManager: SceneManager) {
         super(gameEngine);
@@ -71,7 +90,7 @@ export class StartMenuScene extends Scene {
             const baseWidth = 4; // Larger base width
             this.startButton.scale.set(baseWidth, baseWidth / aspect, 1);
 
-            this.startButton.position.set(0, 0, 0.1);
+            this.startButton.position.set(0, 0, 0.2);
             this.startButton.name = "StartButton";
             this.startButton.userData.isButton = true;
             this.threeScene.add(this.startButton);
@@ -87,10 +106,14 @@ export class StartMenuScene extends Scene {
     }
 
     private setupSparks(): void {
-        // Initialize empty spark particles
+        // Initialize empty particles
         const positions = new Float32Array(100 * 3); // 100 particles
+        const types = new Float32Array(100);
         this.sparkGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        this.sparks = new THREE.Points(this.sparkGeometry, this.sparkMaterial);
+        this.sparkGeometry.setAttribute('type', new THREE.BufferAttribute(types, 1));
+
+        // Create points with custom material handling
+        this.sparks = new THREE.Points(this.sparkGeometry, this.sparkMaterials[0]);
         this.sparks.visible = false;
         this.threeScene.add(this.sparks);
     }
@@ -101,22 +124,27 @@ export class StartMenuScene extends Scene {
         const particleCount = 100;
         const positions = new Float32Array(particleCount * 3);
         this.sparkVelocities = new Float32Array(particleCount * 3);
+        this.sparkTypes = new Float32Array(particleCount);
 
         // Create particles exploding outward from origin
         for (let i = 0; i < particleCount; i++) {
             positions[i * 3] = origin.x;
             positions[i * 3 + 1] = origin.y;
-            positions[i * 3 + 2] = origin.z + 0.1;
+            positions[i * 3 + 2] = origin.z - 0.1; // Behind button
 
-            // Random outward velocity
+            // Random outward velocity with more spread for larger particles
             const angle = Math.random() * Math.PI * 2;
-            const speed = 0.05 + Math.random() * 0.1;
+            const speed = 0.1 + Math.random() * 0.3; // Faster speed for bigger particles
             this.sparkVelocities[i * 3] = Math.cos(angle) * speed;
             this.sparkVelocities[i * 3 + 1] = Math.sin(angle) * speed;
-            this.sparkVelocities[i * 3 + 2] = (Math.random() - 0.5) * 0.05;
+            this.sparkVelocities[i * 3 + 2] = (Math.random() - 0.5) * 0.1;
+
+            // Random particle type (0-2)
+            this.sparkTypes[i] = Math.floor(Math.random() * 3);
         }
 
         this.sparkGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        this.sparkGeometry.setAttribute('type', new THREE.BufferAttribute(this.sparkTypes, 1));
         this.sparks.visible = true;
     }
 
@@ -129,40 +157,42 @@ export class StartMenuScene extends Scene {
     }
 
     update(deltaTime: number): void {
-        // Pulsing animation (maintain aspect ratio)
-        if (this.startButton) {
-            this.buttonScale += this.pulseDirection * deltaTime * 0.2;
-            if (this.buttonScale > 1.1 || this.buttonScale < 0.9) {
-                this.pulseDirection *= -1;
-            }
-            let aspect = 1;
-            if (this.buttonNormalTexture?.image) {
-                aspect = this.buttonNormalTexture.image.width / this.buttonNormalTexture.image.height;
-            }
-            const baseWidth = 4; // Match creation scale
-            this.startButton.scale.set(
-                baseWidth * this.buttonScale,
-                (baseWidth / aspect) * this.buttonScale,
-                1
-            );
-        }
-
-        // Update spark particles
-        if (this.sparks && this.sparkVelocities) {
+        // Update particles
+        if (this.sparks && this.sparkVelocities && this.sparkTypes) {
             const positions = this.sparkGeometry.attributes.position.array as Float32Array;
+            const types = this.sparkGeometry.attributes.type.array as Float32Array;
 
-            for (let i = 0; i < positions.length; i += 3) {
-                positions[i] += this.sparkVelocities[i];
-                positions[i + 1] += this.sparkVelocities[i + 1];
-                positions[i + 2] += this.sparkVelocities[i + 2];
+            for (let i = 0; i < positions.length / 3; i++) {
+                const typeIdx = Math.floor(types[i]);
+                if (typeIdx >= 0 && typeIdx < this.sparkMaterials.length) {
+                    // Update position
+                    positions[i * 3] += this.sparkVelocities[i * 3];
+                    positions[i * 3 + 1] += this.sparkVelocities[i * 3 + 1];
+                    positions[i * 3 + 2] += this.sparkVelocities[i * 3 + 2];
 
-                // Fade out particles
-                this.sparkVelocities[i] *= 0.95;
-                this.sparkVelocities[i + 1] *= 0.95;
-                this.sparkVelocities[i + 2] *= 0.95;
+                    // Apply different physics based on particle type
+                    switch (typeIdx) {
+                        case 0: // Gold sparks
+                            this.sparkVelocities[i * 3] *= 0.95;
+                            this.sparkVelocities[i * 3 + 1] *= 0.95;
+                            this.sparkVelocities[i * 3 + 2] *= 0.95;
+                            break;
+                        case 1: // Hearts - slower fade
+                            this.sparkVelocities[i * 3] *= 0.97;
+                            this.sparkVelocities[i * 3 + 1] *= 0.97;
+                            this.sparkVelocities[i * 3 + 2] *= 0.97;
+                            break;
+                        case 2: // Stars - faster movement
+                            this.sparkVelocities[i * 3] *= 0.92;
+                            this.sparkVelocities[i * 3 + 1] *= 0.92;
+                            this.sparkVelocities[i * 3 + 2] *= 0.92;
+                            break;
+                    }
+                }
             }
 
             this.sparkGeometry.attributes.position.needsUpdate = true;
+            this.sparkGeometry.attributes.type.needsUpdate = true;
         }
     }
 
