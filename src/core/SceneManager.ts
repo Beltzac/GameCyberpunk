@@ -7,7 +7,7 @@ import { AssetLoader } from '../utils/AssetLoader';
 import { Easing } from '../utils/Easing';
 
 function delay(ms: number) {
-    return new Promise( resolve => setTimeout(resolve, ms) );
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 export type TransitionType = 'fade' | 'glitch';

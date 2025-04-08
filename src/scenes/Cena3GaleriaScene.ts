@@ -48,34 +48,95 @@ export class Cena3GaleriaScene extends Scene {
                             }
                         `,
                         fragmentShader: `
-                            uniform float time;
-                            uniform vec3 glowColor;
-                            varying vec2 vUv;
-                            varying vec3 vNormal;
+      #ifdef GL_ES
+precision mediump float;
+#endif
 
-                            // Simple gradient noise for WebGL compatibility
-                            float rand(vec2 co) {
-                                return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
-                            }
+uniform float time;
+uniform float glitchIntensity;
+uniform vec3 glowColor;
+uniform sampler2D map;
 
-                            void main() {
-                                // Scan lines with simpler noise
-                                float scanNoise = rand(vUv * 50.0 + time * 0.1) * 0.1;
-                                float scanLine = sin(vUv.y * 1000.0 + time * 3.0) * 0.05 + 0.95;
-                                scanLine = mix(scanLine, 1.0, scanNoise);
+varying vec2 vUv;
+varying vec3 vNormal;
 
-                                // Edge glow
-                                float edge = max(0.0, dot(vNormal, vec3(0.0, 0.0, 1.0)));
-                                edge = pow(edge, 2.0);
+// A simple pseudo-random function
+float rand(vec2 co) {
+    return fract(sin(dot(co.xy, vec2(12.9898,78.233))) * 43758.5453);
+}
 
-                                // Combine effects
-                                vec3 color = glowColor * scanLine * (0.6 + edge * 0.4);
+void main() {
+    // Copy vUv into a local uv to apply glitch offsets safely
+    vec2 uv = vUv;
 
-                                // Subtler flicker using simpler noise
-                                float flicker = 0.95 + (rand(vec2(time * 0.1, 0.0)) - 0.5) * 0.05;
+    // Base hologram effect:
+    float scanLine = sin(uv.y * 1000.0 + time * 3.0) * 0.05 + 0.95;
+    float edge = max(0.0, dot(vNormal, vec3(0.0, 0.0, 1.0)));
+    edge = pow(edge, 2.0);
 
-                                gl_FragColor = vec4(color * flicker, 0.7);
-                            }
+    // Start with a simple glow
+    vec3 color = glowColor * scanLine * (0.6 + edge * 0.4);
+
+    // Glitch effect block
+    if (glitchIntensity > 0.0) {
+        float glitchTime = mod(time * 0.5 + glitchIntensity * 5.0, 2.0);
+        float displacement = glitchIntensity * (rand(vec2(glitchTime)) - 0.5) * 0.1;
+        float colorShift  = glitchIntensity * (rand(vec2(glitchTime + 0.1)) - 0.5) * 0.05;
+
+        // Random x‐offset glitch in UV
+        if (rand(vec2(floor(glitchTime * 10.0))) > 0.85) {
+            uv.x += displacement;
+        }
+
+        // Channel offset glitch
+        if (rand(vec2(floor(glitchTime * 15.0))) > 0.9) {
+            float r = texture2D(map, uv + vec2(colorShift, 0.0)).r;
+            float g = texture2D(map, uv - vec2(colorShift, 0.0)).g;
+            color.r = r;
+            color.g = g;
+        }
+
+        // Noise fade
+        float noise = rand(uv + mod(time, 1.0)) * 0.2 * glitchIntensity;
+        color.rgb = mix(color.rgb, color.rgb - noise, glitchIntensity);
+    }
+
+    // Subtle flicker
+    float flicker = 0.95 + (rand(vec2(time * 0.1, 0.0)) - 0.5) * 0.05;
+
+    // Boost color intensity
+    color = mix(color, color * 1.5, 0.3);
+
+    // Randomly trigger a bigger glitch more often
+    float glitchProb = rand(vec2(time * 0.3, 1.0));
+    if (glitchProb > 0.95) {   // was 0.97
+        // UV distortion
+        vec2 uvOffset = vec2(
+            (rand(vec2(time))       - 0.5) * 0.1,
+            (rand(vec2(time + 1.0)) - 0.5) * 0.05
+        );
+
+        // Bigger channel offsets
+        float rChannel = rand(vec2(time * 2.0, 1.0)) * 0.04; // was 0.02
+        float gChannel = rand(vec2(time * 2.0, 2.0)) * 0.04; // was 0.02
+        float bChannel = rand(vec2(time * 2.0, 3.0)) * 0.04; // new
+
+        // Combine everything
+        vec2 distortedUV = uv + uvOffset;
+        color.r = texture2D(map, distortedUV + vec2(rChannel, 0.0)).r;
+        color.g = texture2D(map, distortedUV + vec2(gChannel, 0.0)).g;
+        color.b = texture2D(map, distortedUV + vec2(bChannel, 0.0)).b;
+
+        // Add a scan‐line disruption
+        if (mod(uv.y * 100.0 + time * 10.0, 1.0) > 0.7) {
+            color *= 0.8;
+        }
+    }
+
+    // Final output with slight transparency
+    gl_FragColor = vec4(color * flicker, 0.85);
+}
+
                         `,
                         transparent: true,
                         side: THREE.DoubleSide
@@ -191,7 +252,7 @@ export class Cena3GaleriaScene extends Scene {
         });
         // Rotate the model and update shader time
         if (this.plantaPack) {
-            this.plantaPack.rotation.y += deltaTime * 0.5; // Rotate 0.5 radians per second
+            //this.plantaPack.rotation.y += deltaTime * 0.5; // Rotate 0.5 radians per second
 
             // Update shader time uniform
             this.plantaPack.traverse((child) => {
