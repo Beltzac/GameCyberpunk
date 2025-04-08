@@ -56,7 +56,7 @@ export class StartMenuScene extends Scene {
                 context.translate(canvas.width/2, canvas.height/2);
                 context.rotate(-10 * Math.PI / 180);
                 context.fillText('AION', -70, -50);
-                context.fillText('♦ ☻ ♥', 70, 50);
+                context.fillText('♦☻♥', 70, 50);
                 context.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
 
                 const texture = new THREE.Texture(canvas);
