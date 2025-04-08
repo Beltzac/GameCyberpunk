@@ -14,6 +14,7 @@ export class Cena3GaleriaScene extends Scene {
     private decisionButtons: THREE.Sprite[] = [];
     private buttonTextures: THREE.Texture[] = [];
     private currentSelection: number = -1;
+    private plantaPack: THREE.Object3D | null = null;
 
     constructor(gameEngine: GameEngine, assetLoader: AssetLoader, sceneManager: SceneManager) {
         super(gameEngine);
@@ -27,8 +28,19 @@ export class Cena3GaleriaScene extends Scene {
 
         try {
             // Load 3D model
-            const plantaPack = await this.assetLoader.loadModel('cena_3_galeria/planta_pack.glb');
-            this.threeScene.add(plantaPack);
+            this.plantaPack = await this.assetLoader.loadModel('cena_3_galeria/planta_pack.glb');
+            this.plantaPack.position.set(-2, -3, 5); // Front position (z=1)
+            this.plantaPack.scale.set(6, 6, 6); // Larger scale
+            this.plantaPack.name = 'plantaPack'; // Set name for identification
+            this.threeScene.add(this.plantaPack);
+
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+            this.threeScene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(0, 5, 2);
+            this.threeScene.add(directionalLight);
 
             // Load background
             const backgroundTexture = await this.assetLoader.loadTexture('assets/cena_3_galeria/background.png');
@@ -122,6 +134,10 @@ export class Cena3GaleriaScene extends Scene {
             material.opacity = this.currentSelection === index ? 1 : 0.7;
             material.needsUpdate = true;
         });
+        // Rotate the model
+        // if (this.plantaPack) {
+        //     this.plantaPack.rotation.y += deltaTime * 0.5; // Rotate 0.5 radians per second
+        // }
     }
 
     render(renderer: THREE.WebGLRenderer): void {

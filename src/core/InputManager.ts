@@ -134,25 +134,21 @@ export class InputManager {
         // Filter intersects based on alpha value
         const validIntersects = allIntersects.filter(intersect => {
             const uv = intersect.uv;
-            const object = intersect.object as THREE.Mesh; // Assume Mesh for material/texture access
-            if (uv && object.material) {
+            const object = intersect.object;
+            if (object.type === 'Mesh') {
+                return true; // Always accept mesh objects
+            } else if (uv && object instanceof THREE.Mesh) {
                 const material = Array.isArray(object.material) ? object.material[0] : object.material;
-                if (material instanceof THREE.MeshBasicMaterial ||
-                    material instanceof THREE.MeshStandardMaterial ||
-                    material instanceof THREE.MeshPhongMaterial ||
-                    material instanceof THREE.SpriteMaterial) { // Check common material types with maps
+                if (material instanceof THREE.SpriteMaterial) {
                     const texture = material.map;
                     if (texture && texture.image) {
                         const alpha = this.getAlphaAtUV(texture, uv);
-                        return alpha > 0.1; // Alpha threshold
+                        return alpha > 0.1; // Alpha threshold for sprites only
                     }
                 }
+                return true; // Accept other material types
             }
-            // If no texture/uv or alpha is low, consider it a hit on the geometry anyway
-            // unless alpha check is strictly required for all objects.
-            // For now, let's assume if we can't check alpha, it's a valid hit.
-            // If strict alpha checking is needed, return false here.
-            return true; // Fallback: if alpha check fails/not applicable, treat as hit
+            return true; // Fallback: accept all other cases
         });
 
         const intersects = validIntersects; // Use the filtered list
@@ -397,12 +393,15 @@ export class InputManager {
         for (const intersect of allIntersects) {
             const uv = intersect.uv;
             const object = intersect.object as THREE.Mesh;
-            if (uv && object.material) {
+            if (object.type === 'Mesh') {
+                // Skip alpha check for mesh objects, treat as valid hit
+                validIntersects.push(intersect);
+                if (!firstValidIntersect) {
+                    firstValidIntersect = intersect;
+                }
+            } else if (uv && object.material) {
                 const material = Array.isArray(object.material) ? object.material[0] : object.material;
-                if (material instanceof THREE.MeshBasicMaterial ||
-                    material instanceof THREE.MeshStandardMaterial ||
-                    material instanceof THREE.MeshPhongMaterial ||
-                    material instanceof THREE.SpriteMaterial) {
+                if (material instanceof THREE.SpriteMaterial) {
                     const texture = material.map;
                     if (texture && texture.image) {
                         const alpha = this.getAlphaAtUV(texture, uv);
@@ -420,7 +419,7 @@ export class InputManager {
                         }
                     }
                 } else {
-                    // Unsupported material type for alpha check, treat as valid geometry hit
+                    // For non-sprite materials, treat as valid hit
                     validIntersects.push(intersect);
                     if (!firstValidIntersect) {
                         firstValidIntersect = intersect;
