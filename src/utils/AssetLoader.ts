@@ -7,10 +7,15 @@ export class AssetLoader {
     private audioLoader: THREE.AudioLoader;
     private textureCache: Map<string, THREE.Texture>;
     private audioCache: Map<string, AudioBuffer>;
+    private defaultTexture: THREE.Texture;
+
     private _isLoadComplete: boolean = false; // Flag to track initial load completion
     private pendingPromises: Promise<any>[] = []; // Track all pending load operations
 
     constructor() {
+        this.defaultTexture = this.createDefaultTexture();
+        this.defaultTexture.name = 'default_checkered';
+
         this.loadingManager = new THREE.LoadingManager(
             // onLoad callback for the manager itself
             () => {
@@ -30,6 +35,27 @@ export class AssetLoader {
         this.textureCache = new Map();
         this.audioCache = new Map();
         this.audioLoader = new THREE.AudioLoader(this.loadingManager);
+    }
+
+    private createDefaultTexture(): THREE.Texture {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const context = canvas.getContext('2d')!;
+
+        // Create purple and black checkered pattern
+        const size = 8;
+        for (let y = 0; y < canvas.height; y += size) {
+            for (let x = 0; x < canvas.width; x += size) {
+                const isPurple = Math.floor(x / size) % 2 === Math.floor(y / size) % 2;
+                context.fillStyle = isPurple ? '#800080' : '#000000';
+                context.fillRect(x, y, size, size);
+            }
+        }
+
+        const texture = new THREE.Texture(canvas);
+        texture.needsUpdate = true;
+        return texture;
     }
 
     public async loadTexture(url: string): Promise<THREE.Texture> {
@@ -61,12 +87,14 @@ export class AssetLoader {
                     } else {
                         errorMessage = String(error);
                     }
+                    console.error(`AssetLoader: Using default texture for ${cleanPath} due to error: ${errorMessage}`);
                     console.error(`AssetLoader: Full error details for ${cleanPath}:`, {
                         errorType: typeof error,
                         errorObject: error,
                         stack: error instanceof Error ? error.stack : undefined
                     });
-                    reject(new Error(`Failed to load texture from ${cleanPath}: ${errorMessage}`));
+                    this.textureCache.set(url, this.defaultTexture);
+                    resolve(this.defaultTexture);
                 }
             );
         });

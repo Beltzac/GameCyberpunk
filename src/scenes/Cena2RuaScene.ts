@@ -472,14 +472,17 @@ export class Cena2RuaScene extends Scene {
                 // this.postContainer.position.y = 0; // REMOVED - Initial local position is (0,0,0.01). Centering happens after animation.
                 // <<< END MODIFIED >>>
             }
-        } else if (clickedObject.name.startsWith("ThoughtButton")) {
-            const buttonIndex = parseInt(clickedObject.name.replace("ThoughtButton", "")) - 1;
-            console.log(`Thought button ${buttonIndex + 1} clicked`);
-            // Add thought-specific logic here later
-
+        } else if (clickedObject.name == "ThoughtButton1") {
             setTimeout(async () => {
                 if (this.sceneManager) {
                     await this.sceneManager.changeScene('cena1_trabalho', 'glitch');
+                }
+            }, 1000);
+        }
+        else if (clickedObject.name == "ThoughtButton2") {
+            setTimeout(async () => {
+                if (this.sceneManager) {
+                    await this.sceneManager.changeScene('cena3_galeria', 'glitch');
                 }
             }, 1000);
         }
