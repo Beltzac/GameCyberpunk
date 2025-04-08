@@ -27,6 +27,11 @@ export abstract class Scene {
     // Handle click events on scene objects
     abstract handleClick(intersects: THREE.Intersection[]): Promise<void>
 
+    // Handle mouse move events on scene objects (optional)
+    handleMouseMove(intersects: THREE.Intersection[]): void {
+        // Default empty implementation
+    }
+
     // Removed getThreeScene() as threeScene is now public
 
     // Methods for handling scene activation/deactivation

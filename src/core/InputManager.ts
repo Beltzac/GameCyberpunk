@@ -393,6 +393,7 @@ export class InputManager {
 
         // Find the first intersection that passes the alpha test
         let firstValidIntersect: THREE.Intersection | null = null;
+        const validIntersects: THREE.Intersection[] = [];
         for (const intersect of allIntersects) {
             const uv = intersect.uv;
             const object = intersect.object as THREE.Mesh;
@@ -406,27 +407,40 @@ export class InputManager {
                     if (texture && texture.image) {
                         const alpha = this.getAlphaAtUV(texture, uv);
                         if (alpha > 0.1) { // Alpha threshold
-                            firstValidIntersect = intersect;
-                            break; // Found the first valid one
+                            validIntersects.push(intersect);
+                            if (!firstValidIntersect) {
+                                firstValidIntersect = intersect;
+                            }
                         }
                     } else {
                         // No texture, treat as valid geometry hit
-                        firstValidIntersect = intersect;
-                        break;
+                        validIntersects.push(intersect);
+                        if (!firstValidIntersect) {
+                            firstValidIntersect = intersect;
+                        }
                     }
                 } else {
                     // Unsupported material type for alpha check, treat as valid geometry hit
-                    firstValidIntersect = intersect;
-                    break;
+                    validIntersects.push(intersect);
+                    if (!firstValidIntersect) {
+                        firstValidIntersect = intersect;
+                    }
                 }
             } else {
                 // No UV coordinates, treat as valid geometry hit
-                firstValidIntersect = intersect;
-                break;
+                validIntersects.push(intersect);
+                if (!firstValidIntersect) {
+                    firstValidIntersect = intersect;
+                }
             }
         }
         // Update isOverClickable flag
         this.isOverClickable = firstValidIntersect !== null;
+
+        // Notify scene about mouse move with intersects
+        if (this.sceneManager.currentScene) {
+            this.sceneManager.currentScene.handleMouseMove(validIntersects);
+        }
     } // <-- End of checkCursorOverClickable
 
     private updateCursorAppearance(): void {
