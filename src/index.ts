@@ -4,13 +4,14 @@ import { Cena1TrabalhoScene } from './scenes/Cena1TrabalhoScene';
 import { Cena2RuaScene } from './scenes/Cena2RuaScene';
 import { StartMenuScene } from './scenes/StartMenuScene';
 import { injectSpeedInsights } from '@vercel/speed-insights';
+import { inject } from '@vercel/analytics';
 
 // Import other necessary managers or utilities if needed later
 // import { AssetLoader } from './utils/AssetLoader';
 // import { UIManager } from './ui/UIManager';
 
 // --- Main Application Setup ---
-
+inject();
 injectSpeedInsights();
 
 // 1. Get the Canvas Element
