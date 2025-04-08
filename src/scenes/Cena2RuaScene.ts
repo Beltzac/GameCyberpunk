@@ -101,16 +101,8 @@ export class Cena2RuaScene extends Scene {
             );
 
 
-            // Create background sprite (full screen, non-interactive)
-            const backgroundMaterial = new THREE.SpriteMaterial({ map: backgroundTexture });
-            this.backgroundSprite = new THREE.Sprite(backgroundMaterial);
-            // Scale background to camera view
-            const camera = this.gameEngine.camera;
-            const scaleX = (camera.right - camera.left);
-            const scaleY = (camera.top - camera.bottom);
-            this.backgroundSprite.scale.set(scaleX, scaleY, 1);
-            this.backgroundSprite.userData.isBackground = true; // Mark as background
-            this.threeScene.add(this.backgroundSprite);
+            // Create background sprite using base class method
+            this.backgroundSprite = this.createBackground(backgroundTexture);
 
             // Create hand sprite (interactive object)
             const handMaterial = new THREE.SpriteMaterial({
@@ -128,8 +120,6 @@ export class Cena2RuaScene extends Scene {
             this.setupRain();
 
             // Create thought buttons
-            // Create thought buttons - one on each side
-            // Create thought buttons - one on each side (initially hidden)
             for (let i = 0; i < this.thoughtButtonTextures.length; i++) {
                 const material = new THREE.SpriteMaterial({
                     map: this.thoughtButtonTextures[i],
@@ -145,17 +135,6 @@ export class Cena2RuaScene extends Scene {
                 this.thoughtButtons.push(button);
                 this.threeScene.add(button);
             }
-            const ambientLight = new THREE.AmbientLight(0x404040);
-            this.threeScene.add(ambientLight);
-
-            // Add colored lights for cyberpunk effect
-            const cyanLight = new THREE.PointLight(0x00ffff, 0.5);
-            cyanLight.position.set(-5, 2, 3);
-            this.threeScene.add(cyanLight);
-
-            const magentaLight = new THREE.PointLight(0xff00ff, 0.5);
-            magentaLight.position.set(5, 2, 3);
-            this.threeScene.add(magentaLight);
 
             console.log("Cena2RuaScene initialized.");
         } catch (error) {
@@ -473,14 +452,6 @@ export class Cena2RuaScene extends Scene {
 
                     // Create Mesh instead of Sprite
                     const postMesh = new THREE.Mesh(postGeometry, postMaterial);
-
-                    // Redundant declarations removed below - these were calculated earlier for the geometry
-                    // const paddingFactor = 0.5;
-                    // const postScaleX = phoneScaleX * paddingFactor;
-                    // const texture = this.postTextures[i];
-                    // const aspectRatio = texture.image ? (texture.image.naturalHeight / texture.image.naturalWidth) : 1;
-
-                    // postMesh.scale.set(1, 1, 1); // Scale is now handled by geometry size
 
                     // Position posts vertically stacked within the container
                     // Center of the first post (i=0) should be near y=0 in the container

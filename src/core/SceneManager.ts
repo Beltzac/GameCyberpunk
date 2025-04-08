@@ -5,8 +5,6 @@ import { GameEngine } from './GameEngine';
 import { GameState } from './GameState';
 import { AssetLoader } from '../utils/AssetLoader';
 import { Easing } from '../utils/Easing';
-import { SoundManager } from './SoundManager';
-
 
 export type TransitionType = 'fade' | 'glitch';
 export class SceneManager {
@@ -90,15 +88,15 @@ export class SceneManager {
 
         // Assuming OrthographicCamera based on user instruction
         if (camera.type === 'OrthographicCamera') {
-             // Explicitly cast after checking type
+            // Explicitly cast after checking type
             const orthographicCamera = camera as THREE.OrthographicCamera;
             height = orthographicCamera.top - orthographicCamera.bottom;
             width = orthographicCamera.right - orthographicCamera.left;
         } else {
-             console.error(`SceneManager: Expected OrthographicCamera but received ${camera.type}. Overlay sizing might be incorrect.`);
-             // Fallback sizing if not Orthographic
-             height = 2; // Default height
-             width = 2 * (window.innerWidth / window.innerHeight); // Approximate aspect
+            console.error(`SceneManager: Expected OrthographicCamera but received ${camera.type}. Overlay sizing might be incorrect.`);
+            // Fallback sizing if not Orthographic
+            height = 2; // Default height
+            width = 2 * (window.innerWidth / window.innerHeight); // Approximate aspect
         }
 
         // Create overlay geometry with calculated size
@@ -224,7 +222,6 @@ export class SceneManager {
 
         // Call enter method on the new scene if it exists
         if (this._currentScene && typeof this._currentScene.onEnter === 'function') {
-            //await this.gameEngine.assetLoader.isEverythingLoaded();
             await this._currentScene.onEnter();
         }
     }
@@ -259,7 +256,7 @@ export class SceneManager {
             try {
                 await this.setScene(sceneId);
             } catch (error) {
-                 console.error(`[SceneManager] Error calling setScene directly after failed readiness check:`, error);
+                console.error(`[SceneManager] Error calling setScene directly after failed readiness check:`, error);
             }
             return; // Exit after direct switch
         }
@@ -382,8 +379,8 @@ export class SceneManager {
         console.log(`[glitchTransition] Entered. Status: glitchMaterial=${!!this.glitchMaterial}, renderer=${!!this.renderer}, currentScene=${!!this._currentScene}, fadeOverlay=${!!this.fadeOverlay}`);
 
         if (!this.glitchMaterial || !this.renderer || !this._currentScene || !this.fadeOverlay) {
-             console.warn(`[glitchTransition] Aborting: One or more required components are missing.`);
-             return; // Exit if components are missing
+            console.warn(`[glitchTransition] Aborting: One or more required components are missing.`);
+            return; // Exit if components are missing
         }
 
         console.log(`[glitchTransition] Starting animation. Target intensity: ${targetIntensity}, Duration: ${duration}`);
@@ -458,11 +455,11 @@ export class SceneManager {
                         this.glitchMaterial.uniforms.intensity.value = targetIntensity; // Ensure final value is set
 
                         if (targetIntensity === 0 && this.fadeMaterial && this.fadeOverlay) {
-                           console.log(`[glitchTransition] Resetting material to fade and removing overlay.`);
-                           this.fadeOverlay.material = this.fadeMaterial;
-                           if (this._currentScene) {
-                               this._currentScene.threeScene.remove(this.fadeOverlay);
-                           }
+                            console.log(`[glitchTransition] Resetting material to fade and removing overlay.`);
+                            this.fadeOverlay.material = this.fadeMaterial;
+                            if (this._currentScene) {
+                                this._currentScene.threeScene.remove(this.fadeOverlay);
+                            }
                         }
                         renderTarget.dispose();
                         console.log(`[glitchTransition] Resolving promise.`);

@@ -1,12 +1,11 @@
-// src/core/GameEngine.ts
 import * as THREE from 'three';
 import { SceneManager } from './SceneManager';
 import { InputManager } from './InputManager';
 import { UIManager } from '../ui/UIManager'; // Import UIManager
 import { GameState } from './GameState';
-import { Scene } from './Scene'; // Import base Scene type
 import { AssetLoader } from '../utils/AssetLoader';
 import { SoundManager } from './SoundManager';
+
 const CAMERA_FRUSTUM_SIZE = 8; // Centralized camera frustum size
 
 export class GameEngine {
@@ -21,7 +20,6 @@ export class GameEngine {
     public uiManager: UIManager; // Add UIManager property
     public assetLoader: AssetLoader;
     public soundManager: SoundManager;
-    // Removed cursor properties: cursorTexture, cursorMesh, cursorMaterial, mouseX, mouseY, raycaster, isOverClickable
     private animationFrameId: number | null = null;
 
     constructor(canvas: HTMLCanvasElement) {
@@ -33,12 +31,11 @@ export class GameEngine {
             canvas: this.canvas,
             antialias: true, // Enable anti-aliasing
         });
+
         this.renderer.localClippingEnabled = true; // Re-enable for post clipping
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(window.devicePixelRatio);
-        // Configure renderer further if needed (e.g., shadow maps, output encoding)
-        // this.renderer.shadowMap.enabled = true;
-        // this.renderer.outputEncoding = THREE.sRGBEncoding;
+
 
         // Basic Camera
         const aspect = window.innerWidth / window.innerHeight;
@@ -70,23 +67,6 @@ export class GameEngine {
         this.sceneManager.setRenderer(this.renderer);
         this.uiManager.setSceneManager(this.sceneManager); // Connect UIManager and SceneManager
 
-        // Add ambient light for phong materials
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); // Adjusted intensity slightly
-        // Removed ambientLight.layers.set(1) - Layer 1 is now managed by InputManager for the cursor
-        // Keep camera layer 1 enabled as InputManager uses it.
-
-        // Add light to each scene when it's created
-        this.sceneManager.onSceneChanged((scene) => {
-            if (scene && scene.threeScene) {
-                // Add ambient light if not already present
-                if (!scene.threeScene.children.some(child => child instanceof THREE.AmbientLight)) {
-                     scene.threeScene.add(ambientLight.clone()); // Clone to avoid issues if light is removed elsewhere
-                }
-            }
-        });
-
-        // Removed loadCursorTexture call - InputManager handles this now
-
         // Handle window resizing
         window.addEventListener('resize', this.onWindowResize.bind(this), false);
 
@@ -115,14 +95,12 @@ export class GameEngine {
             // This case should ideally not happen if scenes are registered before start()
             console.error("GameEngine: No scenes registered! Cannot start.");
             // Optionally throw an error or prevent starting
-             return; // Prevent starting if no scenes
+            return; // Prevent starting if no scenes
         }
 
         console.log("GameEngine: Starting main loop...");
         this.clock.start();
         this.gameLoop(); // Start the loop
-
-
     }
 
     public stop(): void {
@@ -148,7 +126,6 @@ export class GameEngine {
             // 2. Update InputManager (handles cursor position and click animations)
             this.inputManager.update(deltaTime);
             this.uiManager.update(); // Update UI Manager (though currently minimal)
-            // Removed call to this.updateCursorPosition() - InputManager handles this
             // 3. Render the scene
             this.renderer.render(currentScene.threeScene, this.camera);
         } else {
@@ -174,10 +151,6 @@ export class GameEngine {
         this.renderer.setPixelRatio(window.devicePixelRatio);
 
         console.log("GameEngine: Window resized.");
-        // Notify current scene about resize if needed
-        // if (this.sceneManager.currentScene && typeof this.sceneManager.currentScene.onResize === 'function') {
-        //     this.sceneManager.currentScene.onResize(window.innerWidth, window.innerHeight);
-        // }
     }
 
     // Optional: Method to clean up resources
@@ -189,6 +162,4 @@ export class GameEngine {
         this.renderer.dispose();
         console.log("GameEngine: Disposed.");
     }
-
-    // Removed cursor methods: loadCursorTexture, updateCursorPosition, checkCursorOverClickable, updateCursorAppearance
 }

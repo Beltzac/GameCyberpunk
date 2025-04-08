@@ -75,26 +75,16 @@ export class Cena1TrabalhoScene extends Scene {
 
             // Load assets (background, notebook textures)
             console.log('Loading background texture...');
-            const backgroundTexture = await this.assetLoader.loadTexture('cena_1_trabalho/background.png')
-                .catch(error => { console.error('Failed to load background texture:', error); throw error; });
+            const backgroundTexture = await this.assetLoader.loadTexture('cena_1_trabalho/background.png');
 
             console.log('Loading notebook open texture...');
-            this.notebookOpenTexture = await this.assetLoader.loadTexture('cena_1_trabalho/notebook_aberto.png')
-                .catch(error => { console.error('Failed to load notebook open texture:', error); throw error; });
+            this.notebookOpenTexture = await this.assetLoader.loadTexture('cena_1_trabalho/notebook_aberto.png');
 
             console.log('Loading notebook closed texture...');
-            this.notebookClosedTexture = await this.assetLoader.loadTexture('cena_1_trabalho/notebook_fechado.png')
-                .catch(error => { console.error('Failed to load notebook closed texture:', error); throw error; });
+            this.notebookClosedTexture = await this.assetLoader.loadTexture('cena_1_trabalho/notebook_fechado.png');
 
-            // Create background sprite
-            const backgroundMaterial = new THREE.SpriteMaterial({ map: backgroundTexture });
-            this.backgroundSprite = new THREE.Sprite(backgroundMaterial);
-            const camera = this.gameEngine.camera;
-            const scaleX = (camera.right - camera.left);
-            const scaleY = (camera.top - camera.bottom);
-            this.backgroundSprite.scale.set(scaleX, scaleY, 1);
-            this.backgroundSprite.userData.isBackground = true;
-            this.threeScene.add(this.backgroundSprite);
+            // Create background sprite using base class method
+            this.backgroundSprite = this.createBackground(backgroundTexture);
 
             // Create notebook sprite
             const notebookMaterial = new THREE.SpriteMaterial({ map: this.notebookOpenTexture, transparent: true });
@@ -103,24 +93,6 @@ export class Cena1TrabalhoScene extends Scene {
             this.notebookSprite.position.set(1, -1.5, 0.1);
             this.notebookSprite.name = "Notebook";
             this.threeScene.add(this.notebookSprite);
-
-            // Add ambient light
-            const ambientLight = new THREE.AmbientLight(0x404040);
-            this.threeScene.add(ambientLight);
-
-            // Add colored point lights and store references (Static)
-            this.cyanLight = new THREE.PointLight(0x00ffff, 0.5);
-            this.cyanLight.position.set(-5, 2, 3);
-            this.threeScene.add(this.cyanLight);
-
-            this.magentaLight = new THREE.PointLight(0xff00ff, 0.5);
-            this.magentaLight.position.set(5, 2, 3);
-            this.threeScene.add(this.magentaLight);
-
-            // Create cursor sprite REMOVED
-            // this.cursorSprite = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0xffffff }));
-            // ... cursor positioning logic removed ...
-            // this.threeScene.add(this.cursorSprite);
 
             // Setup effects
             this.setupDustMotes();
@@ -208,18 +180,6 @@ export class Cena1TrabalhoScene extends Scene {
             }
             this.dustGeometry.attributes.position.needsUpdate = true;
         }
-
-        // Animate light intensity REMOVED
-        // if (this.cyanLight && this.magentaLight) {
-        //     ... animation logic removed ...
-        // }
-
-        // Update cursor blink REMOVED
-        // if (this.cursorSprite && this.isNotebookOpen) {
-        //     ... blink logic removed ...
-        // } else if (this.cursorSprite && !this.isNotebookOpen) {
-        //      this.cursorSprite.visible = false;
-        // }
     }
 
     render(renderer: THREE.WebGLRenderer): void {
@@ -238,15 +198,6 @@ export class Cena1TrabalhoScene extends Scene {
         const material = this.notebookSprite.material as THREE.SpriteMaterial;
         material.map = this.isNotebookOpen ? this.notebookOpenTexture : this.notebookClosedTexture;
         material.needsUpdate = true;
-
-        // Update cursor visibility immediately when toggling REMOVED
-        // if (this.cursorSprite) {
-        //     this.cursorSprite.visible = this.isNotebookOpen;
-        //     if (this.isNotebookOpen) {
-        //         this.cursorBlinkAccumulator = 0;
-        //     }
-        // }
-
 
         if (this.isNotebookOpen) {
             await this.gameEngine.soundManager.playSound('lid_open', 5);
@@ -268,12 +219,10 @@ export class Cena1TrabalhoScene extends Scene {
 
     public async handleClick(intersects: THREE.Intersection[]): Promise<void> {
         if (!intersects.length) {
-            // console.log('No objects clicked');
             return;
         }
 
         const clickedObject = intersects[0].object;
-        // console.log(`Clicked object: ${clickedObject.name}`);
 
         if (clickedObject.name === "Notebook") {
             console.log('Notebook clicked - toggling');

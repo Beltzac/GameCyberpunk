@@ -37,4 +37,16 @@ export abstract class Scene {
     // Methods for handling scene activation/deactivation
     abstract onEnter(): Promise<void>;
     abstract onExit(): Promise<void>;
+
+    protected createBackground(texture: THREE.Texture): THREE.Sprite {
+        const backgroundMaterial = new THREE.SpriteMaterial({ map: texture });
+        const backgroundSprite = new THREE.Sprite(backgroundMaterial);
+        const camera = this.gameEngine.camera;
+        const scaleX = (camera.right - camera.left);
+        const scaleY = (camera.top - camera.bottom);
+        backgroundSprite.scale.set(scaleX, scaleY, 1);
+        backgroundSprite.userData.isBackground = true;
+        this.threeScene.add(backgroundSprite);
+        return backgroundSprite;
+    }
 }

@@ -118,15 +118,8 @@ export class StartMenuScene extends Scene {
             console.log("Particle materials initialized with generated textures.");
 
 
-            // Create background sprite (full screen, non-interactive)
-            const backgroundMaterial = new THREE.SpriteMaterial({ map: backgroundTexture });
-            this.backgroundSprite = new THREE.Sprite(backgroundMaterial);
-            const camera = this.gameEngine.camera;
-            const scaleX = (camera.right - camera.left);
-            const scaleY = (camera.top - camera.bottom);
-            this.backgroundSprite.scale.set(scaleX, scaleY, 1);
-            this.backgroundSprite.userData.isBackground = true;
-            this.threeScene.add(this.backgroundSprite);
+            // Create background sprite using base class method
+            this.backgroundSprite = this.createBackground(backgroundTexture);
 
             // Create start button with proper aspect ratio
             const buttonMaterial = new THREE.SpriteMaterial({
