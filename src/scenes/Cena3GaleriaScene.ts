@@ -29,6 +29,61 @@ export class Cena3GaleriaScene extends Scene {
         try {
             // Load 3D model
             this.plantaPack = await this.assetLoader.loadModel('cena_3_galeria/planta_pack.glb');
+
+            // Apply hologram shader to all materials
+            this.plantaPack.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    const material = new THREE.ShaderMaterial({
+                        uniforms: {
+                            time: { value: 0 },
+                            glowColor: { value: new THREE.Color(0.2, 1.0, 1.0) }
+                        },
+                        vertexShader: `
+                            varying vec2 vUv;
+                            varying vec3 vNormal;
+                            void main() {
+                                vUv = uv;
+                                vNormal = normalize(normalMatrix * normal);
+                                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                            }
+                        `,
+                        fragmentShader: `
+                            uniform float time;
+                            uniform vec3 glowColor;
+                            varying vec2 vUv;
+                            varying vec3 vNormal;
+
+                            // Simple gradient noise for WebGL compatibility
+                            float rand(vec2 co) {
+                                return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+                            }
+
+                            void main() {
+                                // Scan lines with simpler noise
+                                float scanNoise = rand(vUv * 50.0 + time * 0.1) * 0.1;
+                                float scanLine = sin(vUv.y * 1000.0 + time * 3.0) * 0.05 + 0.95;
+                                scanLine = mix(scanLine, 1.0, scanNoise);
+
+                                // Edge glow
+                                float edge = max(0.0, dot(vNormal, vec3(0.0, 0.0, 1.0)));
+                                edge = pow(edge, 2.0);
+
+                                // Combine effects
+                                vec3 color = glowColor * scanLine * (0.6 + edge * 0.4);
+
+                                // Subtler flicker using simpler noise
+                                float flicker = 0.95 + (rand(vec2(time * 0.1, 0.0)) - 0.5) * 0.05;
+
+                                gl_FragColor = vec4(color * flicker, 0.7);
+                            }
+                        `,
+                        transparent: true,
+                        side: THREE.DoubleSide
+                    });
+                    child.material = material;
+                }
+            });
+
             this.plantaPack.position.set(-2, -3, 5); // Front position (z=1)
             this.plantaPack.scale.set(6, 6, 6); // Larger scale
             this.plantaPack.name = 'plantaPack'; // Set name for identification
@@ -134,10 +189,17 @@ export class Cena3GaleriaScene extends Scene {
             material.opacity = this.currentSelection === index ? 1 : 0.7;
             material.needsUpdate = true;
         });
-        // Rotate the model
-        // if (this.plantaPack) {
-        //     this.plantaPack.rotation.y += deltaTime * 0.5; // Rotate 0.5 radians per second
-        // }
+        // Rotate the model and update shader time
+        if (this.plantaPack) {
+            this.plantaPack.rotation.y += deltaTime * 0.5; // Rotate 0.5 radians per second
+
+            // Update shader time uniform
+            this.plantaPack.traverse((child) => {
+                if (child instanceof THREE.Mesh && child.material instanceof THREE.ShaderMaterial) {
+                    child.material.uniforms.time.value = performance.now() * 0.001;
+                }
+            });
+        }
     }
 
     render(renderer: THREE.WebGLRenderer): void {
