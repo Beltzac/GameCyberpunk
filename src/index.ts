@@ -2,6 +2,7 @@
 import { GameEngine } from './core/GameEngine';
 import { Cena1TrabalhoScene } from './scenes/Cena1TrabalhoScene';
 import { Cena2RuaScene } from './scenes/Cena2RuaScene';
+import { StartMenuScene } from './scenes/StartMenuScene';
 // Import other necessary managers or utilities if needed later
 // import { AssetLoader } from './utils/AssetLoader';
 // import { UIManager } from './ui/UIManager';
@@ -26,16 +27,17 @@ const gameEngine = new GameEngine(canvas);
 // 3. Create Scene Instances
 // Pass any required managers (like AssetLoader, UIManager) to scene constructors if needed
 
+const startMenuScene = new StartMenuScene(gameEngine, gameEngine.assetLoader, gameEngine.sceneManager);
 const cena1TrabalhoScene = new Cena1TrabalhoScene(gameEngine, gameEngine.assetLoader, gameEngine.sceneManager);
 const cena2RuaScene = new Cena2RuaScene(gameEngine, gameEngine.assetLoader, gameEngine.sceneManager);
 
 // 4. Add Scenes to the Scene Manager
+gameEngine.sceneManager.addScene('start_menu', startMenuScene);
 gameEngine.sceneManager.addScene('cena1_trabalho', cena1TrabalhoScene);
 gameEngine.sceneManager.addScene('cena2_rua', cena2RuaScene);
 
 // 5. Set the Initial Scene
-//meEngine.sceneManager.setScene('cena1_trabalho'); // Start with work scene
-//await gameEngine.sceneManager.setScene('cena2_rua'); // Start with work scene
+//await gameEngine.sceneManager.setScene('start_menu');
 
 // 6. Start the Game Engine's Main Loop
 await gameEngine.start();
