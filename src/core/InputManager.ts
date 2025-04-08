@@ -5,6 +5,7 @@ import { Scene } from './Scene';
 import { AssetLoader } from '../utils/AssetLoader'; // Import AssetLoader
 import { Easing } from '../utils/Easing'; // Import Easing
 import { UIManager } from '../ui/UIManager'; // Import UIManager
+import { SoundManager } from './SoundManager'; // Import SoundManager
 
 export class InputManager {
     private canvas: HTMLCanvasElement;
@@ -12,6 +13,7 @@ export class InputManager {
     private sceneManager: SceneManager; // Add SceneManager reference
     private uiManager: UIManager; // Add UIManager reference
     private clickRaycaster: THREE.Raycaster; // Renamed for clarity
+    private soundManager: SoundManager; // Add SoundManager reference
     private mouse: THREE.Vector2;
     private assetLoader: AssetLoader; // Add AssetLoader reference
     private cursorTexture: THREE.Texture | null = null;
@@ -29,13 +31,14 @@ export class InputManager {
     // Mouse move callback
     private mouseMoveCallbacks: Array<(x: number, y: number) => void> = [];
 
-    // Add uiManager to constructor
-    constructor(canvas: HTMLCanvasElement, camera: THREE.Camera, sceneManager: SceneManager, assetLoader: AssetLoader, uiManager: UIManager) {
+    // Add uiManager and soundManager to constructor
+    constructor(canvas: HTMLCanvasElement, camera: THREE.Camera, sceneManager: SceneManager, assetLoader: AssetLoader, uiManager: UIManager, soundManager: SoundManager) {
         this.canvas = canvas;
         this.camera = camera;
         this.sceneManager = sceneManager;
         this.assetLoader = assetLoader;
         this.uiManager = uiManager; // Store UIManager
+        this.soundManager = soundManager; // Store SoundManager
         this.clickRaycaster = new THREE.Raycaster(); // Initialize click raycaster
         this.mouse = new THREE.Vector2();
         this.setupEventListeners();
@@ -43,7 +46,11 @@ export class InputManager {
             // Initial position update after texture loads
             this.updateCursorPosition();
         });
-        console.log("InputManager initialized with Camera, SceneManager, AssetLoader, and UIManager");
+        // Load the click sound
+        this.soundManager.loadSound('ui_click', 'assets/sounds/click.wav').catch(error => {
+            console.error("InputManager: Failed to load click sound:", error);
+        });
+        console.log("InputManager initialized with Camera, SceneManager, AssetLoader, UIManager, and SoundManager");
     }
 
     private setupEventListeners(): void {
@@ -92,6 +99,12 @@ export class InputManager {
     }
 
     private async handleCanvasClick(event: MouseEvent): Promise<void> {
+        // Play click sound immediately on any click attempt
+        if (this.soundManager) { // Check if soundManager is initialized
+            this.soundManager.playSound('ui_click', 0.7);
+        } else {
+            console.warn("InputManager: SoundManager not available to play click sound.");
+        }
         const rect = this.canvas.getBoundingClientRect();
 
         // Calculate mouse position in normalized device coordinates (-1 to +1)

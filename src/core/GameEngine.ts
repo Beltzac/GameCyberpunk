@@ -64,7 +64,7 @@ export class GameEngine {
         this.gameState = new GameState();
         this.sceneManager = new SceneManager(this.gameState, this);
         this.uiManager = new UIManager(); // Instantiate UIManager
-        this.inputManager = new InputManager(this.canvas, this.camera, this.sceneManager, this.assetLoader, this.uiManager); // Pass uiManager
+        this.inputManager = new InputManager(this.canvas, this.camera, this.sceneManager, this.assetLoader, this.uiManager, this.soundManager); // Pass uiManager and soundManager
 
         // Set renderer in SceneManager for transitions
         this.sceneManager.setRenderer(this.renderer);
