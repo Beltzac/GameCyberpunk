@@ -20,33 +20,28 @@ export class Cena3GaleriaScene extends Scene {
     private vitrolaPack: THREE.Object3D | null = null; // Reference for the vitrola model
     // Removed mixer, using manual rotation now
     // Physics state for plantaPack
-    private isRotatingPlanta: boolean = false;
     private currentRotationVelocityYPlanta: number = 0;
     private currentRotationVelocityXPlanta: number = 0;
 
     // Physics state for mesaPack
-    private isRotatingMesa: boolean = false;
     private currentRotationVelocityYMesa: number = 0;
     private currentRotationVelocityXMesa: number = 0;
 
     // Physics state for vitrolaPack
-    private isRotatingVitrola: boolean = false;
     private currentRotationVelocityYVitrola: number = 0;
     private currentRotationVelocityXVitrola: number = 0;
 
     // Shared physics constants (can remain shared)
 
-    private isRotating: boolean = false; // Flag for any motion (Y rotation or X tilt)
-    // Y Rotation (Spin)
-    private currentRotationVelocityY: number = 0;
+    // Shared physics constants (can remain shared)
     private readonly dampingFactor: number = 0.95; // Controls how quickly Y rotation slows down
     private readonly rotationImpulse: number = Math.PI * 3; // Speed boost on click for Y
-    // X Rotation (Tilt)
-    private currentRotationVelocityX: number = 0;
-    private readonly targetRotationX: number = 0; // Target upright position
+    private readonly targetRotationX: number = 0; // Target upright position for all models
     private readonly tiltImpulse: number = 4; // Initial tilt speed boost
     private readonly tiltSpringFactor: number = 0.3; // Increased for faster spring effect
     private readonly tiltDampingFactor: number = 0.95; // How quickly tilt oscillation stops
+
+    // Note: Removed shared isRotating, currentRotationVelocityX/Y variables
 
     constructor(gameEngine: GameEngine, assetLoader: AssetLoader, sceneManager: SceneManager) {
         super(gameEngine);
@@ -74,7 +69,7 @@ export class Cena3GaleriaScene extends Scene {
             if (this.mesaPack) {
                 HologramHelper.applyHologramShader(this.mesaPack); // Use helper class
                 this.mesaPack.position.set(-4, -1.5, 2.5); // Position left, slightly lower
-                this.mesaPack.scale.set(4, 4, 4);
+                this.mesaPack.scale.set(1, 1, 1);
                 this.threeScene.add(this.mesaPack);
             }
 
@@ -210,31 +205,57 @@ export class Cena3GaleriaScene extends Scene {
         HologramHelper.updateShaderTime(this.mesaPack);
         HologramHelper.updateShaderTime(this.vitrolaPack);
 
-        // Update physics-based rotation and tilt
-        if (this.plantaPack && (this.isRotating || Math.abs(this.currentRotationVelocityX) > 0.01 || Math.abs(this.currentRotationVelocityY) > 0.01)) {
-            // --- Y Rotation (Spin) ---
-            this.plantaPack.rotation.y += this.currentRotationVelocityY * deltaTime;
-            this.currentRotationVelocityY *= this.dampingFactor; // Apply damping
+        // --- Update physics for plantaPack ---
+        if (this.plantaPack && (Math.abs(this.currentRotationVelocityXPlanta) > 0.01 || Math.abs(this.currentRotationVelocityYPlanta) > 0.01)) {
+            // Y Rotation
+            this.plantaPack.rotation.y += this.currentRotationVelocityYPlanta * deltaTime;
+            this.currentRotationVelocityYPlanta *= this.dampingFactor;
+            // X Rotation
+            const springForceXPlanta = (this.targetRotationX - this.plantaPack.rotation.x) * this.tiltSpringFactor;
+            this.currentRotationVelocityXPlanta += springForceXPlanta;
+            this.currentRotationVelocityXPlanta *= this.tiltDampingFactor;
+            this.plantaPack.rotation.x += this.currentRotationVelocityXPlanta * deltaTime;
+            // Check stopping
+            if (Math.abs(this.currentRotationVelocityYPlanta) < 0.01 && Math.abs(this.currentRotationVelocityXPlanta) < 0.01) {
+                this.currentRotationVelocityYPlanta = 0;
+                this.currentRotationVelocityXPlanta = 0;
+                this.plantaPack.rotation.x = this.targetRotationX; // Snap
+            }
+        }
 
-            // --- X Rotation (Tilt) ---
-            // Calculate spring force towards target X rotation
-            const springForceX = (this.targetRotationX - this.plantaPack.rotation.x) * this.tiltSpringFactor;
-            // Apply spring force to velocity
-            this.currentRotationVelocityX += springForceX;
-            // Apply damping to velocity
-            this.currentRotationVelocityX *= this.tiltDampingFactor;
-            // Apply rotation based on velocity
-            this.plantaPack.rotation.x += this.currentRotationVelocityX * deltaTime;
+        // --- Update physics for mesaPack ---
+        if (this.mesaPack && (Math.abs(this.currentRotationVelocityXMesa) > 0.01 || Math.abs(this.currentRotationVelocityYMesa) > 0.01)) {
+            // Y Rotation
+            this.mesaPack.rotation.y += this.currentRotationVelocityYMesa * deltaTime;
+            this.currentRotationVelocityYMesa *= this.dampingFactor;
+            // X Rotation
+            const springForceXMesa = (this.targetRotationX - this.mesaPack.rotation.x) * this.tiltSpringFactor;
+            this.currentRotationVelocityXMesa += springForceXMesa;
+            this.currentRotationVelocityXMesa *= this.tiltDampingFactor;
+            this.mesaPack.rotation.x += this.currentRotationVelocityXMesa * deltaTime;
+            // Check stopping
+            if (Math.abs(this.currentRotationVelocityYMesa) < 0.01 && Math.abs(this.currentRotationVelocityXMesa) < 0.01) {
+                this.currentRotationVelocityYMesa = 0;
+                this.currentRotationVelocityXMesa = 0;
+                this.mesaPack.rotation.x = this.targetRotationX; // Snap
+            }
+        }
 
-            // --- Check for stopping ---
-            if (Math.abs(this.currentRotationVelocityY) < 0.01 && Math.abs(this.currentRotationVelocityX) < 0.01) {
-                this.currentRotationVelocityY = 0;
-                this.currentRotationVelocityX = 0;
-                // Snap to final target rotation to avoid tiny drifts
-                this.plantaPack.rotation.x = this.targetRotationX;
-                this.isRotating = false; // Stop updates if both motions cease
-            } else {
-                this.isRotating = true; // Ensure updates continue if either motion is active
+        // --- Update physics for vitrolaPack ---
+        if (this.vitrolaPack && (Math.abs(this.currentRotationVelocityXVitrola) > 0.01 || Math.abs(this.currentRotationVelocityYVitrola) > 0.01)) {
+            // Y Rotation
+            this.vitrolaPack.rotation.y += this.currentRotationVelocityYVitrola * deltaTime;
+            this.currentRotationVelocityYVitrola *= this.dampingFactor;
+            // X Rotation
+            const springForceXVitrola = (this.targetRotationX - this.vitrolaPack.rotation.x) * this.tiltSpringFactor;
+            this.currentRotationVelocityXVitrola += springForceXVitrola;
+            this.currentRotationVelocityXVitrola *= this.tiltDampingFactor;
+            this.vitrolaPack.rotation.x += this.currentRotationVelocityXVitrola * deltaTime;
+            // Check stopping
+            if (Math.abs(this.currentRotationVelocityYVitrola) < 0.01 && Math.abs(this.currentRotationVelocityXVitrola) < 0.01) {
+                this.currentRotationVelocityYVitrola = 0;
+                this.currentRotationVelocityXVitrola = 0;
+                this.vitrolaPack.rotation.x = this.targetRotationX; // Snap
             }
         }
     }
@@ -250,42 +271,30 @@ export class Cena3GaleriaScene extends Scene {
 
         // Handle model click (check if object is in plantaPack hierarchy)
         // Handle model click (check if object is in plantaPack hierarchy)
-        if (this.plantaPack && this.isObjectInHierarchy(clickedObject, this.plantaPack) && !this.isRotating) {
-            this.isRotating = true; // Signal that motion is starting/active
-            // Apply impulses with random direction
+        // Handle plantaPack click
+        if (this.plantaPack && this.isObjectInHierarchy(clickedObject, this.plantaPack)) {
             const randomYDirection = Math.random() < 0.5 ? -1 : 1;
             const randomXDirection = Math.random() < 0.5 ? -1 : 1;
-            this.currentRotationVelocityY += this.rotationImpulse * randomYDirection;
-            this.currentRotationVelocityX += this.tiltImpulse * randomXDirection;
+            this.currentRotationVelocityYPlanta += this.rotationImpulse * randomYDirection;
+            this.currentRotationVelocityXPlanta += this.tiltImpulse * randomXDirection;
         }
         // Handle mesa click
-        else if (this.mesaPack && this.isObjectInHierarchy(clickedObject, this.mesaPack) && !this.isRotating) {
-             this.isRotating = true;
+        // Handle mesaPack click
+        else if (this.mesaPack && this.isObjectInHierarchy(clickedObject, this.mesaPack)) {
              const randomYDirection = Math.random() < 0.5 ? -1 : 1;
              const randomXDirection = Math.random() < 0.5 ? -1 : 1;
-             // Apply impulses directly to the mesaPack
-             // Note: We might need separate velocity variables if we want independent physics later
-             this.currentRotationVelocityY += this.rotationImpulse * randomYDirection;
-             this.currentRotationVelocityX += this.tiltImpulse * randomXDirection;
-             // Apply initial rotation to mesaPack (or manage its physics separately)
-             if (this.mesaPack) { // Check if mesaPack exists
-                this.mesaPack.rotation.y += this.currentRotationVelocityY * 0.016; // Apply small initial step
-                this.mesaPack.rotation.x += this.currentRotationVelocityX * 0.016;
-             }
+             this.currentRotationVelocityYMesa += this.rotationImpulse * randomYDirection;
+             this.currentRotationVelocityXMesa += this.tiltImpulse * randomXDirection;
+             // No need to apply initial rotation here, the update loop handles it
         }
         // Handle vitrola click
-        else if (this.vitrolaPack && this.isObjectInHierarchy(clickedObject, this.vitrolaPack) && !this.isRotating) {
-             this.isRotating = true;
+        // Handle vitrolaPack click
+        else if (this.vitrolaPack && this.isObjectInHierarchy(clickedObject, this.vitrolaPack)) {
              const randomYDirection = Math.random() < 0.5 ? -1 : 1;
              const randomXDirection = Math.random() < 0.5 ? -1 : 1;
-             // Apply impulses directly to the vitrolaPack
-             this.currentRotationVelocityY += this.rotationImpulse * randomYDirection;
-             this.currentRotationVelocityX += this.tiltImpulse * randomXDirection;
-             // Apply initial rotation to vitrolaPack (or manage its physics separately)
-              if (this.vitrolaPack) { // Check if vitrolaPack exists
-                this.vitrolaPack.rotation.y += this.currentRotationVelocityY * 0.016; // Apply small initial step
-                this.vitrolaPack.rotation.x += this.currentRotationVelocityX * 0.016;
-              }
+             this.currentRotationVelocityYVitrola += this.rotationImpulse * randomYDirection;
+             this.currentRotationVelocityXVitrola += this.tiltImpulse * randomXDirection;
+             // No need to apply initial rotation here, the update loop handles it
         }
 
         // Handle character selection
