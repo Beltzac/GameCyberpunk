@@ -55,7 +55,7 @@ export class Cena3GaleriaScene extends Scene {
 
         try {
             // Load 3D model (AssetLoader now returns the pivot group)
-            this.plantaPack = await this.assetLoader.loadModel('cena_3_galeria/planta_pack.glb');
+            this.plantaPack = await this.assetLoader.loadModel('cena_3_galeria/planta-cc.glb');
             this.plantaPack.position.set(0, -1.5, 2.5); // Position center, slightly lower
             this.plantaPack.scale.set(4, 4, 4); // Apply desired scale to the pivot
             // Apply shader using the helper class
@@ -65,7 +65,7 @@ export class Cena3GaleriaScene extends Scene {
             this.threeScene.add(this.plantaPack); // Add the pivot to the scene
 
             // Load Mesa model
-            this.mesaPack = await this.assetLoader.loadModel('cena_3_galeria/mesa_pack.glb');
+            this.mesaPack = await this.assetLoader.loadModel('cena_3_galeria/mesa-cc.glb');
             if (this.mesaPack) {
                 HologramHelper.applyHologramShader(this.mesaPack); // Use helper class
                 this.mesaPack.position.set(-4, -1.5, 2.5); // Position left, slightly lower
@@ -74,7 +74,7 @@ export class Cena3GaleriaScene extends Scene {
             }
 
             // Load Vitrola model
-            this.vitrolaPack = await this.assetLoader.loadModel('cena_3_galeria/vitrola_pack.glb');
+            this.vitrolaPack = await this.assetLoader.loadModel('cena_3_galeria/vitrola-cc.glb');
             if (this.vitrolaPack) {
                 HologramHelper.applyHologramShader(this.vitrolaPack); // Use helper class
                 this.vitrolaPack.position.set(4, -1.5, 2.5); // Position right, slightly lower
