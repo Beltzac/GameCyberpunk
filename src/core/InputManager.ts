@@ -450,7 +450,7 @@ export class InputManager {
             (!this.isOverClickable && this.cursorMaterial.emissiveIntensity > 0);
 
         if (needsUpdate) {
-            console.log(`InputManager: Updating cursor appearance. isOverClickable: ${this.isOverClickable}`); // Add log for debugging
+            //console.log(`InputManager: Updating cursor appearance. isOverClickable: ${this.isOverClickable}`); // Add log for debugging
             if (this.isOverClickable) {
                 this.cursorMaterial.color.set(0xffff00); // Yellow
                 this.cursorMaterial.emissive.set(0xffff00);

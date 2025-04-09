@@ -179,8 +179,27 @@ export class AssetLoader {
                 cleanPath,
                 (gltf) => {
                     console.log(`AssetLoader: Successfully loaded model from ${cleanPath}`);
-                    this.modelCache.set(url, gltf.scene);
-                    resolve(gltf.scene);
+                    const model = gltf.scene;
+
+                    // Create pivot group for centered rotation
+                    const pivot = new THREE.Group();
+                    const box = new THREE.Box3().setFromObject(model);
+                    const center = new THREE.Vector3();
+                    box.getCenter(center);
+
+                    // Position pivot at scene center (0,0,0)
+                    pivot.position.set(0, 0, 0);
+                    pivot.add(model);
+
+                    // Offset model within pivot to center it
+                    model.position.copy(center).negate();
+
+                    // Apply scale to pivot (1:1 by default)
+                    pivot.scale.set(1, 1, 1);
+                    pivot.name = `${url}_pivot`; // Name the pivot for potential debugging
+
+                    this.modelCache.set(url, pivot); // Cache the pivot group
+                    resolve(pivot); // Resolve the promise with the pivot group
                 },
                 undefined,
                 (error: unknown) => {
