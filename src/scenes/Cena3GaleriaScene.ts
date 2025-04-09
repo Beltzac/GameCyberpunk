@@ -15,6 +15,19 @@ export class Cena3GaleriaScene extends Scene {
     private buttonTextures: THREE.Texture[] = [];
     private currentSelection: number = -1;
     private plantaPack: THREE.Object3D | null = null;
+    private plantaPackPivot: THREE.Group | null = null; // Pivot for centered rotation
+    // Removed mixer, using manual rotation now
+    private isRotating: boolean = false; // Flag for any motion (Y rotation or X tilt)
+    // Y Rotation (Spin)
+    private currentRotationVelocityY: number = 0;
+    private readonly dampingFactor: number = 0.95; // Controls how quickly Y rotation slows down
+    private readonly rotationImpulse: number = Math.PI * 3; // Speed boost on click for Y
+    // X Rotation (Tilt)
+    private currentRotationVelocityX: number = 0;
+    private readonly targetRotationX: number = 0; // Target upright position
+    private readonly tiltImpulse: number = 4; // Initial tilt speed boost
+    private readonly tiltSpringFactor: number = 0.3; // Increased for faster spring effect
+    private readonly tiltDampingFactor: number = 0.95; // How quickly tilt oscillation stops
 
     constructor(gameEngine: GameEngine, assetLoader: AssetLoader, sceneManager: SceneManager) {
         super(gameEngine);
@@ -30,7 +43,27 @@ export class Cena3GaleriaScene extends Scene {
             // Load 3D model
             this.plantaPack = await this.assetLoader.loadModel('cena_3_galeria/planta_pack.glb');
 
-            // Apply hologram shader to all materials
+            // Center the model
+            const box = new THREE.Box3().setFromObject(this.plantaPack);
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+            // Don't move the model itself, we'll use a pivot
+
+            // Create a pivot point at the calculated center
+            this.plantaPackPivot = new THREE.Group();
+            // Position the pivot where the object should be centered in the scene
+            this.plantaPackPivot.position.set(0, 0, 2.5);
+            // Add the original model to the pivot
+            this.plantaPackPivot.add(this.plantaPack);
+            // Offset the model within the pivot so its calculated center aligns with the pivot's origin
+            this.plantaPack.position.copy(center).negate();
+
+            // Apply scale and name to the pivot
+            this.plantaPackPivot.scale.set(6, 6, 6); // Larger scale
+            this.plantaPackPivot.name = 'plantaPackPivot'; // Set name for identification
+            this.threeScene.add(this.plantaPackPivot); // Add the pivot to the scene
+
+            // Apply hologram shader to all materials within the original model
             this.plantaPack.traverse((child) => {
                 if (child instanceof THREE.Mesh) {
                     const material = new THREE.ShaderMaterial({
@@ -145,10 +178,7 @@ void main() {
                 }
             });
 
-            this.plantaPack.position.set(-2, -3, 5); // Front position (z=1)
-            this.plantaPack.scale.set(6, 6, 6); // Larger scale
-            this.plantaPack.name = 'plantaPack'; // Set name for identification
-            this.threeScene.add(this.plantaPack);
+            // Position, scale, name, and adding to scene are now handled by the pivot group above
 
             // Add lights
             const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
@@ -196,6 +226,18 @@ void main() {
             console.error("Failed to initialize Cena3GaleriaScene:", error);
             throw error;
         }
+
+    }
+
+    private isObjectInHierarchy(obj: THREE.Object3D, parent: THREE.Object3D): boolean {
+        let current = obj;
+        while (current.parent) {
+            if (current.parent === parent) {
+                return true;
+            }
+            current = current.parent;
+        }
+        return false;
     }
 
     private createCharacterSprite(texture: THREE.Texture, x: number, y: number): THREE.Sprite {
@@ -250,16 +292,43 @@ void main() {
             material.opacity = this.currentSelection === index ? 1 : 0.7;
             material.needsUpdate = true;
         });
-        // Rotate the model and update shader time
-        if (this.plantaPack) {
-            //this.plantaPack.rotation.y += deltaTime * 0.5; // Rotate 0.5 radians per second
 
+        // Update shader time
+        if (this.plantaPack) {
             // Update shader time uniform
             this.plantaPack.traverse((child) => {
                 if (child instanceof THREE.Mesh && child.material instanceof THREE.ShaderMaterial) {
                     child.material.uniforms.time.value = performance.now() * 0.001;
                 }
             });
+        }
+
+        // Update physics-based rotation and tilt
+        if (this.plantaPackPivot && (this.isRotating || Math.abs(this.currentRotationVelocityX) > 0.01 || Math.abs(this.currentRotationVelocityY) > 0.01)) {
+            // --- Y Rotation (Spin) ---
+            this.plantaPackPivot.rotation.y += this.currentRotationVelocityY * deltaTime;
+            this.currentRotationVelocityY *= this.dampingFactor; // Apply damping
+
+            // --- X Rotation (Tilt) ---
+            // Calculate spring force towards target X rotation
+            const springForceX = (this.targetRotationX - this.plantaPackPivot.rotation.x) * this.tiltSpringFactor;
+            // Apply spring force to velocity
+            this.currentRotationVelocityX += springForceX;
+            // Apply damping to velocity
+            this.currentRotationVelocityX *= this.tiltDampingFactor;
+            // Apply rotation based on velocity
+            this.plantaPackPivot.rotation.x += this.currentRotationVelocityX * deltaTime;
+
+            // --- Check for stopping ---
+            if (Math.abs(this.currentRotationVelocityY) < 0.01 && Math.abs(this.currentRotationVelocityX) < 0.01) {
+                this.currentRotationVelocityY = 0;
+                this.currentRotationVelocityX = 0;
+                // Snap to final target rotation to avoid tiny drifts
+                this.plantaPackPivot.rotation.x = this.targetRotationX;
+                this.isRotating = false; // Stop updates if both motions cease
+            } else {
+                this.isRotating = true; // Ensure updates continue if either motion is active
+            }
         }
     }
 
@@ -271,6 +340,17 @@ void main() {
         if (!intersects.length) return;
 
         const clickedObject = intersects[0].object;
+
+        // Handle model click (check if object is in plantaPack hierarchy)
+        // Handle model click (check if object is in plantaPackPivot hierarchy)
+        if (this.plantaPackPivot && this.isObjectInHierarchy(clickedObject, this.plantaPackPivot) && !this.isRotating) {
+            this.isRotating = true; // Signal that motion is starting/active
+            // Apply impulses with random direction
+            const randomYDirection = Math.random() < 0.5 ? -1 : 1;
+            const randomXDirection = Math.random() < 0.5 ? -1 : 1;
+            this.currentRotationVelocityY += this.rotationImpulse * randomYDirection;
+            this.currentRotationVelocityX += this.tiltImpulse * randomXDirection;
+        }
 
         // Handle character selection
         if (clickedObject.name === "DecisionButton0") {
