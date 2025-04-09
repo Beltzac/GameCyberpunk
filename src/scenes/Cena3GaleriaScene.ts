@@ -5,6 +5,7 @@ import { AssetLoader } from '../utils/AssetLoader';
 import { SceneManager } from '../core/SceneManager';
 import { GameEngine } from '../core/GameEngine';
 import { Easing } from '../utils/Easing';
+import { HologramHelper } from '../utils/HologramHelper'; // Import the new helper
 
 export class Cena3GaleriaScene extends Scene {
     private assetLoader: AssetLoader;
@@ -15,7 +16,26 @@ export class Cena3GaleriaScene extends Scene {
     private buttonTextures: THREE.Texture[] = [];
     private currentSelection: number = -1;
     private plantaPack: THREE.Object3D | null = null; // Reference to the actual model inside the pivot
+    private mesaPack: THREE.Object3D | null = null; // Reference for the table model
+    private vitrolaPack: THREE.Object3D | null = null; // Reference for the vitrola model
     // Removed mixer, using manual rotation now
+    // Physics state for plantaPack
+    private isRotatingPlanta: boolean = false;
+    private currentRotationVelocityYPlanta: number = 0;
+    private currentRotationVelocityXPlanta: number = 0;
+
+    // Physics state for mesaPack
+    private isRotatingMesa: boolean = false;
+    private currentRotationVelocityYMesa: number = 0;
+    private currentRotationVelocityXMesa: number = 0;
+
+    // Physics state for vitrolaPack
+    private isRotatingVitrola: boolean = false;
+    private currentRotationVelocityYVitrola: number = 0;
+    private currentRotationVelocityXVitrola: number = 0;
+
+    // Shared physics constants (can remain shared)
+
     private isRotating: boolean = false; // Flag for any motion (Y rotation or X tilt)
     // Y Rotation (Spin)
     private currentRotationVelocityY: number = 0;
@@ -41,128 +61,34 @@ export class Cena3GaleriaScene extends Scene {
         try {
             // Load 3D model (AssetLoader now returns the pivot group)
             this.plantaPack = await this.assetLoader.loadModel('cena_3_galeria/planta_pack.glb');
-            this.plantaPack.position.set(0, 0, 2.5); // Position the pivot in the scene
-            this.plantaPack.scale.set(6, 6, 6); // Apply desired scale to the pivot
+            this.plantaPack.position.set(0, -1.5, 2.5); // Position center, slightly lower
+            this.plantaPack.scale.set(4, 4, 4); // Apply desired scale to the pivot
+            // Apply shader using the helper class
+            if (this.plantaPack) { // Ensure plantaPack is loaded before applying shader
+                HologramHelper.applyHologramShader(this.plantaPack); // Use helper class
+            }
             this.threeScene.add(this.plantaPack); // Add the pivot to the scene
 
-            // Apply hologram shader to all materials within the actual model (child of the pivot)
-            if (this.plantaPack) { // Ensure plantaPack was found
-                this.plantaPack.traverse((child) => {
-                if (child instanceof THREE.Mesh) {
-                    const material = new THREE.ShaderMaterial({
-                        uniforms: {
-                            time: { value: 0 },
-                            glowColor: { value: new THREE.Color(0.2, 1.0, 1.0) }
-                        },
-                        vertexShader: `
-                            varying vec2 vUv;
-                            varying vec3 vNormal;
-                            void main() {
-                                vUv = uv;
-                                vNormal = normalize(normalMatrix * normal);
-                                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                            }
-                        `,
-                        fragmentShader: `
-      #ifdef GL_ES
-precision mediump float;
-#endif
-
-uniform float time;
-uniform float glitchIntensity;
-uniform vec3 glowColor;
-uniform sampler2D map;
-
-varying vec2 vUv;
-varying vec3 vNormal;
-
-// A simple pseudo-random function
-float rand(vec2 co) {
-    return fract(sin(dot(co.xy, vec2(12.9898,78.233))) * 43758.5453);
-}
-
-void main() {
-    // Copy vUv into a local uv to apply glitch offsets safely
-    vec2 uv = vUv;
-
-    // Base hologram effect:
-    float scanLine = sin(uv.y * 1000.0 + time * 3.0) * 0.05 + 0.95;
-    float edge = max(0.0, dot(vNormal, vec3(0.0, 0.0, 1.0)));
-    edge = pow(edge, 2.0);
-
-    // Start with a simple glow
-    vec3 color = glowColor * scanLine * (0.6 + edge * 0.4);
-
-    // Glitch effect block
-    if (glitchIntensity > 0.0) {
-        float glitchTime = mod(time * 0.5 + glitchIntensity * 5.0, 2.0);
-        float displacement = glitchIntensity * (rand(vec2(glitchTime)) - 0.5) * 0.1;
-        float colorShift  = glitchIntensity * (rand(vec2(glitchTime + 0.1)) - 0.5) * 0.05;
-
-        // Random x‐offset glitch in UV
-        if (rand(vec2(floor(glitchTime * 10.0))) > 0.85) {
-            uv.x += displacement;
-        }
-
-        // Channel offset glitch
-        if (rand(vec2(floor(glitchTime * 15.0))) > 0.9) {
-            float r = texture2D(map, uv + vec2(colorShift, 0.0)).r;
-            float g = texture2D(map, uv - vec2(colorShift, 0.0)).g;
-            color.r = r;
-            color.g = g;
-        }
-
-        // Noise fade
-        float noise = rand(uv + mod(time, 1.0)) * 0.2 * glitchIntensity;
-        color.rgb = mix(color.rgb, color.rgb - noise, glitchIntensity);
-    }
-
-    // Subtle flicker
-    float flicker = 0.95 + (rand(vec2(time * 0.1, 0.0)) - 0.5) * 0.05;
-
-    // Boost color intensity
-    color = mix(color, color * 1.5, 0.3);
-
-    // Randomly trigger a bigger glitch more often
-    float glitchProb = rand(vec2(time * 0.3, 1.0));
-    if (glitchProb > 0.95) {   // was 0.97
-        // UV distortion
-        vec2 uvOffset = vec2(
-            (rand(vec2(time))       - 0.5) * 0.1,
-            (rand(vec2(time + 1.0)) - 0.5) * 0.05
-        );
-
-        // Bigger channel offsets
-        float rChannel = rand(vec2(time * 2.0, 1.0)) * 0.04; // was 0.02
-        float gChannel = rand(vec2(time * 2.0, 2.0)) * 0.04; // was 0.02
-        float bChannel = rand(vec2(time * 2.0, 3.0)) * 0.04; // new
-
-        // Combine everything
-        vec2 distortedUV = uv + uvOffset;
-        color.r = texture2D(map, distortedUV + vec2(rChannel, 0.0)).r;
-        color.g = texture2D(map, distortedUV + vec2(gChannel, 0.0)).g;
-        color.b = texture2D(map, distortedUV + vec2(bChannel, 0.0)).b;
-
-        // Add a scan‐line disruption
-        if (mod(uv.y * 100.0 + time * 10.0, 1.0) > 0.7) {
-            color *= 0.8;
-        }
-    }
-
-    // Final output with slight transparency
-    gl_FragColor = vec4(color * flicker, 0.85);
-}
-
-                        `,
-                        transparent: true,
-                        side: THREE.DoubleSide
-                    });
-                    child.material = material;
-                }
-                });
+            // Load Mesa model
+            this.mesaPack = await this.assetLoader.loadModel('cena_3_galeria/mesa_pack.glb');
+            if (this.mesaPack) {
+                HologramHelper.applyHologramShader(this.mesaPack); // Use helper class
+                this.mesaPack.position.set(-4, -1.5, 2.5); // Position left, slightly lower
+                this.mesaPack.scale.set(4, 4, 4);
+                this.threeScene.add(this.mesaPack);
             }
 
-            // Position, scale, name, and adding to scene are now handled by the pivot group above
+            // Load Vitrola model
+            this.vitrolaPack = await this.assetLoader.loadModel('cena_3_galeria/vitrola_pack.glb');
+            if (this.vitrolaPack) {
+                HologramHelper.applyHologramShader(this.vitrolaPack); // Use helper class
+                this.vitrolaPack.position.set(4, -1.5, 2.5); // Position right, slightly lower
+                this.vitrolaPack.scale.set(4, 4, 4);
+                this.threeScene.add(this.vitrolaPack);
+            }
+
+            // Shader is now applied via the helper function below
+            // Function moved outside init method
 
             // Add lights
             const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
@@ -212,6 +138,8 @@ void main() {
         }
 
     }
+
+    // applyHologramShader method removed, logic moved to HologramHelper
 
     private isObjectInHierarchy(obj: THREE.Object3D, parent: THREE.Object3D): boolean {
         let current = obj;
@@ -277,14 +205,10 @@ void main() {
             material.needsUpdate = true;
         });
 
-        // Update shader time (traverse the actual model within the pivot)
-        if (this.plantaPack) {
-            this.plantaPack.traverse((child) => {
-                if (child instanceof THREE.Mesh && child.material instanceof THREE.ShaderMaterial) {
-                    child.material.uniforms.time.value = performance.now() * 0.001;
-                }
-            }); // End traverse
-        }
+        // Update shader time using the helper
+        HologramHelper.updateShaderTime(this.plantaPack);
+        HologramHelper.updateShaderTime(this.mesaPack);
+        HologramHelper.updateShaderTime(this.vitrolaPack);
 
         // Update physics-based rotation and tilt
         if (this.plantaPack && (this.isRotating || Math.abs(this.currentRotationVelocityX) > 0.01 || Math.abs(this.currentRotationVelocityY) > 0.01)) {
@@ -333,6 +257,35 @@ void main() {
             const randomXDirection = Math.random() < 0.5 ? -1 : 1;
             this.currentRotationVelocityY += this.rotationImpulse * randomYDirection;
             this.currentRotationVelocityX += this.tiltImpulse * randomXDirection;
+        }
+        // Handle mesa click
+        else if (this.mesaPack && this.isObjectInHierarchy(clickedObject, this.mesaPack) && !this.isRotating) {
+             this.isRotating = true;
+             const randomYDirection = Math.random() < 0.5 ? -1 : 1;
+             const randomXDirection = Math.random() < 0.5 ? -1 : 1;
+             // Apply impulses directly to the mesaPack
+             // Note: We might need separate velocity variables if we want independent physics later
+             this.currentRotationVelocityY += this.rotationImpulse * randomYDirection;
+             this.currentRotationVelocityX += this.tiltImpulse * randomXDirection;
+             // Apply initial rotation to mesaPack (or manage its physics separately)
+             if (this.mesaPack) { // Check if mesaPack exists
+                this.mesaPack.rotation.y += this.currentRotationVelocityY * 0.016; // Apply small initial step
+                this.mesaPack.rotation.x += this.currentRotationVelocityX * 0.016;
+             }
+        }
+        // Handle vitrola click
+        else if (this.vitrolaPack && this.isObjectInHierarchy(clickedObject, this.vitrolaPack) && !this.isRotating) {
+             this.isRotating = true;
+             const randomYDirection = Math.random() < 0.5 ? -1 : 1;
+             const randomXDirection = Math.random() < 0.5 ? -1 : 1;
+             // Apply impulses directly to the vitrolaPack
+             this.currentRotationVelocityY += this.rotationImpulse * randomYDirection;
+             this.currentRotationVelocityX += this.tiltImpulse * randomXDirection;
+             // Apply initial rotation to vitrolaPack (or manage its physics separately)
+              if (this.vitrolaPack) { // Check if vitrolaPack exists
+                this.vitrolaPack.rotation.y += this.currentRotationVelocityY * 0.016; // Apply small initial step
+                this.vitrolaPack.rotation.x += this.currentRotationVelocityX * 0.016;
+              }
         }
 
         // Handle character selection
