@@ -39,16 +39,16 @@ export class SceneManager {
         // Load all glitch sounds if SoundManager is available
         if (this.gameEngine.soundManager) {
             const soundFiles = [
-                'sounds/glitch_1.wav',
-                'sounds/glitch_2.wav',
-                'sounds/glitch_3.wav',
-                'sounds/glitch_4.wav',
-                'sounds/glitch_5.wav',
-                'sounds/glitch_6.wav',
-                'sounds/glitch_7.wav',
-                'sounds/glitch_8.wav',
-                'sounds/glitch_9.wav',
-                'sounds/glitch_10.wav'
+                'sounds/glitch_1.mp3',
+                'sounds/glitch_2.mp3',
+                'sounds/glitch_3.mp3',
+                'sounds/glitch_4.mp3',
+                'sounds/glitch_5.mp3',
+                'sounds/glitch_6.mp3',
+                'sounds/glitch_7.mp3',
+                'sounds/glitch_8.mp3',
+                'sounds/glitch_9.mp3',
+                'sounds/glitch_10.mp3'
             ];
 
             const loadPromises = soundFiles.map((file, index) => {

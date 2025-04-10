@@ -47,7 +47,7 @@ export class InputManager {
             this.updateCursorPosition();
         });
         // Load the click sound
-        this.soundManager.loadSound('ui_click', 'assets/sounds/click.wav').catch(error => {
+        this.soundManager.loadSound('ui_click', 'assets/sounds/click.mp3').catch(error => {
             console.error("InputManager: Failed to load click sound:", error);
         });
         console.log("InputManager initialized with Camera, SceneManager, AssetLoader, UIManager, and SoundManager");

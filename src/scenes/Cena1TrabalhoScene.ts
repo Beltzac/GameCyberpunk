@@ -52,12 +52,12 @@ export class Cena1TrabalhoScene extends Scene {
 
             await this.gameEngine.soundManager.loadSound(
                 'lid_open',
-                'cena_1_trabalho/sounds/lid_open.wav'
+                'cena_1_trabalho/sounds/lid_open.mp3'
             );
 
             await this.gameEngine.soundManager.loadSound(
                 'lid_close',
-                'cena_1_trabalho/sounds/lid_close.wav'
+                'cena_1_trabalho/sounds/lid_close.mp3'
             );
 
             // Load assets (background, notebook textures)

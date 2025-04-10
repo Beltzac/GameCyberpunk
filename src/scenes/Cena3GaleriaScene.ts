@@ -113,7 +113,7 @@ export class Cena3GaleriaScene extends Scene {
             // Load sounds
             await this.gameEngine.soundManager.loadSound(
                 'gallery_ambient_2',
-                'cena_3_galeria/sounds/gallery_ambient_2.wav',
+                'cena_3_galeria/sounds/gallery_ambient_2.mp3',
                 true
             );
 
@@ -124,7 +124,7 @@ export class Cena3GaleriaScene extends Scene {
             );
             await this.gameEngine.soundManager.loadSound(
                 'female_hurt',
-                'assets/cena_3_galeria/sounds/female_hurt.wav'
+                'assets/cena_3_galeria/sounds/female_hurt.mp3'
             );
 
             console.log("Cena3GaleriaScene initialized.");
