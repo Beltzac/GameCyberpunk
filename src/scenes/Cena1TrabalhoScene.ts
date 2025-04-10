@@ -1,34 +1,21 @@
 // src/scenes/Cena1TrabalhoScene.ts
 import * as THREE from 'three';
+
 import { Scene } from '../core/Scene';
 import { AssetLoader } from '../utils/AssetLoader';
 import { SceneManager } from '../core/SceneManager';
-// import { Cena2RuaScene } from './Cena2RuaScene'; // Not strictly needed here unless referencing types
 import { GameEngine } from '../core/GameEngine';
+import { VisualEffectManager, DustMotesEffect } from '../utils/VisualEffectManager';
 
 export class Cena1TrabalhoScene extends Scene {
     private assetLoader: AssetLoader;
     private sceneManager: SceneManager;
-    // No need to store gameEngine here, it's in the base class
     private backgroundSprite: THREE.Sprite | null = null;
     private notebookSprite: THREE.Sprite | null = null;
     private notebookOpenTexture: THREE.Texture | null = null;
     private notebookClosedTexture: THREE.Texture | null = null;
     private isNotebookOpen: boolean = true;
-
-    // Dust Motes Properties
-    private dustParticles: THREE.Points | null = null;
-    private dustGeometry = new THREE.BufferGeometry();
-    private dustMaterial = new THREE.PointsMaterial({
-        color: 0xffffee,
-        size: 0.05,
-        transparent: true,
-        opacity: 0.5,
-        depthTest: false,
-        blending: THREE.AdditiveBlending
-    });
-    private dustVelocities: Float32Array | null = null;
-    private dustTimeAccumulator = 0;
+    private dustMotesEffect: DustMotesEffect | null = null;
 
     // Static Light Properties (Animation Removed)
     private cyanLight: THREE.PointLight | null = null;
@@ -116,69 +103,12 @@ export class Cena1TrabalhoScene extends Scene {
     }
 
     private setupDustMotes(): void {
-        const particleCount = 150;
-        const positions = new Float32Array(particleCount * 3);
-        this.dustVelocities = new Float32Array(particleCount * 3);
-
-        const spawnAreaWidth = this.gameEngine.camera.right - this.gameEngine.camera.left;
-        const spawnAreaHeight = this.gameEngine.camera.top - this.gameEngine.camera.bottom;
-        const baseSpeed = 0.01;
-        const speedVariation = 0.02;
-
-        for (let i = 0; i < particleCount; i++) {
-            positions[i * 3] = (Math.random() - 0.5) * spawnAreaWidth;
-            positions[i * 3 + 1] = (Math.random() - 0.5) * spawnAreaHeight;
-            positions[i * 3 + 2] = (Math.random() - 0.5) * 2;
-
-            const angle = Math.random() * Math.PI * 2;
-            const speed = baseSpeed + Math.random() * speedVariation;
-            this.dustVelocities[i * 3] = Math.cos(angle) * speed;
-            this.dustVelocities[i * 3 + 1] = Math.sin(angle) * speed;
-            this.dustVelocities[i * 3 + 2] = (Math.random() - 0.5) * baseSpeed * 0.1;
-        }
-
-        this.dustGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        this.dustParticles = new THREE.Points(this.dustGeometry, this.dustMaterial);
-        this.dustParticles.position.z = 0;
-        this.dustParticles.renderOrder = 10;
-        this.dustParticles.userData.isBackground = true;
-        this.threeScene.add(this.dustParticles);
-        console.log("Dust motes added.");
+        this.dustMotesEffect = VisualEffectManager.createDustMotesEffect(this.threeScene, this.gameEngine.camera);
     }
 
     update(deltaTime: number): void {
-        const effectiveDeltaTime = Math.min(deltaTime, 0.1); // Clamp delta time
-
-        // Update dust motes
-        if (this.dustParticles && this.dustVelocities) {
-            this.dustTimeAccumulator += effectiveDeltaTime;
-            const positions = this.dustGeometry.attributes.position.array as Float32Array;
-            const velocities = this.dustVelocities;
-            const bounds = {
-                x: (this.gameEngine.camera.right - this.gameEngine.camera.left) / 2 + 1,
-                y: (this.gameEngine.camera.top - this.gameEngine.camera.bottom) / 2 + 1,
-                z: 2
-            };
-
-            for (let i = 0; i < positions.length; i += 3) {
-                positions[i] += velocities[i] * effectiveDeltaTime * 60;
-                positions[i + 1] += velocities[i + 1] * effectiveDeltaTime * 60;
-                positions[i + 2] += velocities[i + 2] * effectiveDeltaTime * 60;
-
-                // Simple boundary wrapping
-                if (Math.abs(positions[i]) > bounds.x) velocities[i] *= -1;
-                if (Math.abs(positions[i + 1]) > bounds.y) velocities[i + 1] *= -1;
-                if (Math.abs(positions[i + 2]) > bounds.z) velocities[i + 2] *= -1;
-
-                // Optional random drift change
-                if (Math.random() < 0.001) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const speed = (0.01 + Math.random() * 0.02);
-                    velocities[i] = Math.cos(angle) * speed;
-                    velocities[i + 1] = Math.sin(angle) * speed;
-                }
-            }
-            this.dustGeometry.attributes.position.needsUpdate = true;
+        if (this.dustMotesEffect) {
+            this.dustMotesEffect.update(deltaTime);
         }
     }
 

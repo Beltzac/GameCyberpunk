@@ -4,7 +4,8 @@ import { Scene } from '../core/Scene';
 import { AssetLoader } from '../utils/AssetLoader';
 import { SceneManager } from '../core/SceneManager';
 import { Easing } from '../utils/Easing';
-import { GameEngine } from '../core/GameEngine'; // Import GameEngine
+import { GameEngine } from '../core/GameEngine';
+import { VisualEffectManager, RainEffect } from '../utils/VisualEffectManager';
 
 export class Cena2RuaScene extends Scene {
     private assetLoader: AssetLoader;
@@ -155,65 +156,15 @@ export class Cena2RuaScene extends Scene {
         this.gameEngine.soundManager.stopAllBackground();
     }
 
+    private rainEffect: RainEffect | null = null;
+
     private setupRain(): void {
-        const particleCount = 1500; // Further increase particle count
-        const positions = new Float32Array(particleCount * 3);
-        this.rainVelocities = new Float32Array(particleCount * 3); // Initialize velocities array
-
-        const spawnAreaWidth = 20; // Reduced width
-        const spawnAreaDepth = 15; // Reduced depth
-        const spawnHeight = 10; // Reduced initial height
-        const baseFallSpeed = 0.10; // Increase fall speed slightly
-        const speedVariation = 0.20; // Increase variation slightly
-        const windSpeed = 0.02; // Keep wind speed the same for now
-
-        for (let i = 0; i < particleCount; i++) {
-            // Initial position
-            positions[i * 3] = (Math.random() - 0.5) * spawnAreaWidth; // x
-            positions[i * 3 + 1] = Math.random() * spawnHeight; // y (start higher)
-            positions[i * 3 + 2] = 0; // z - Force to 0 plane
-
-            // Initial velocity
-            this.rainVelocities[i * 3] = windSpeed; // x velocity (wind)
-            this.rainVelocities[i * 3 + 1] = -(baseFallSpeed + Math.random() * speedVariation); // y velocity (falling speed variation)
-            this.rainVelocities[i * 3 + 2] = 0; // z velocity - Keep at 0
-        }
-
-        this.rainGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        this.rainParticles = new THREE.Points(this.rainGeometry, this.rainMaterial);
-        this.rainParticles.position.z = 0.01; // Reset Z position slightly in front
-        // Removed explicit layer setting
-        this.rainParticles.renderOrder = 999; // Render rain on top
-        this.rainParticles.userData.isBackground = true; // Mark rain as non-interactive
-        // Removed debug log
-        this.threeScene.add(this.rainParticles);
+        this.rainEffect = VisualEffectManager.createRainEffect(this.threeScene);
     }
 
     update(deltaTime: number): void {
-        if (this.rainParticles && this.rainVelocities) {
-            const positions = this.rainGeometry.attributes.position.array as Float32Array;
-            const velocities = this.rainVelocities;
-            const fallLimit = -6; // Adjusted lower limit
-            const resetHeight = 10; // Adjusted reset height
-            const spawnAreaWidth = 30; // Match reduced setup width
-
-            const effectiveDeltaTime = Math.min(deltaTime, 0.1); // Clamp deltaTime to avoid large jumps
-
-            for (let i = 0; i < positions.length; i += 3) {
-                // Update position based on velocity and deltaTime
-                positions[i] += velocities[i] * effectiveDeltaTime * 60; // Scale velocity by deltaTime (assuming base velocity is for 60fps)
-                positions[i + 1] += velocities[i + 1] * effectiveDeltaTime * 60; // Scale velocity by deltaTime
-                // positions[i + 2] = 0; // Ensure z stays 0 if velocity was non-zero
-
-                // Reset particle if it falls below the limit
-                if (positions[i + 1] < fallLimit) {
-                    positions[i + 1] = resetHeight + Math.random() * 5; // Reset y to top with some variation
-                    positions[i] = (Math.random() - 0.5) * spawnAreaWidth; // Reset x to a new random horizontal position
-                    // Ensure z remains 0 on reset
-                    positions[i + 2] = 0;
-                }
-            }
-            this.rainGeometry.attributes.position.needsUpdate = true;
+        if (this.rainEffect) {
+            this.rainEffect.update(deltaTime);
         }
 
         // Animate hand bobbing

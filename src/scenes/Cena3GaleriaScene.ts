@@ -259,8 +259,6 @@ export class Cena3GaleriaScene extends Scene {
         } else if (this.vitrolaPack && this.isObjectInHierarchy(clickedObject, this.vitrolaPack as THREE.Object3D)) {
             this.applyRotationImpulse(this.currentRotationVelocityXVitrola, this.currentRotationVelocityYVitrola);
         } else if (this.bobCharacter && clickedObject === this.bobCharacter.getSprite()) {
-            this.gameEngine.soundManager.playSound('male_hurt', 0.8);
-        } else if (this.bobCharacter && clickedObject === this.bobCharacter.getSprite()) {
             this.bobCharacter.playHurtSound();
         } else if (this.martaCharacter && clickedObject === this.martaCharacter.getSprite()) {
             this.martaCharacter.playHurtSound();
