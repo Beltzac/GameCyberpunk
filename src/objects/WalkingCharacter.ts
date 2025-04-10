@@ -45,6 +45,11 @@ export class WalkingCharacter {
         soundManager.loadSound('step2', 'assets/sounds/step_2.wav');
         soundManager.loadSound('male_hurt', 'assets/cena_3_galeria/sounds/male_hurt.mp3');
         soundManager.loadSound('female_hurt', 'assets/cena_3_galeria/sounds/female_hurt.wav');
+        soundManager.loadSound('surprise1', 'assets/cena_3_galeria/sounds/surprise_1.wav');
+        soundManager.loadSound('surprise2', 'assets/cena_3_galeria/sounds/surprise_2.mp3');
+        soundManager.loadSound('surprise3', 'assets/cena_3_galeria/sounds/surprise_3.wav');
+        soundManager.loadSound('surprise4', 'assets/cena_3_galeria/sounds/surprise_4.mp3');
+        soundManager.loadSound('surprise5', 'assets/cena_3_galeria/sounds/surprise_5.mp3');
 
         const material = new THREE.SpriteMaterial({
             map: walkTextures[0],
@@ -110,6 +115,10 @@ export class WalkingCharacter {
                     this.lookTimer = 0;
                     const backIndex = Math.floor(Math.random() * this.backTextures.length);
                     this.updateTexture(this.walkTextures.length + backIndex);
+
+                    // Play random surprise sound
+                    const surpriseSound = `surprise${Math.floor(Math.random() * 5) + 1}`;
+                    this.soundManager.playSound(surpriseSound, 0.5);
                 }
             }
         } else {

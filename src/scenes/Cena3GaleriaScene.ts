@@ -132,7 +132,7 @@ export class Cena3GaleriaScene extends Scene {
             // Load sounds
             await this.gameEngine.soundManager.loadSound(
                 'gallery_ambient_2',
-                'cena_3_galeria/sounds/gallery_ambient_2.mp3',
+                'cena_3_galeria/sounds/gallery_ambient_2.wav',
                 true
             );
 
