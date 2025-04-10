@@ -80,7 +80,7 @@ export abstract class WalkingCharacter {
     public update(deltaTime: number): void {
         if (!this.isLooking) {
             this.walkTimer += deltaTime;
-            if (this.walkTimer > 0.4) {
+            if (this.walkTimer > 0.5) {
                 this.walkTimer = 0;
                 this.walkCycle = (this.walkCycle + 1) % this.walkTextures.length;
                 this.updateTexture(this.walkCycle);
