@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { Easing } from '../utils/Easing';
 
 export class WalkingCharacter {
     private sprite: THREE.Sprite;
@@ -13,13 +14,14 @@ export class WalkingCharacter {
     private speed: number;
     private leftBound: number;
     private rightBound: number;
+    private baseY: number;
 
     constructor(
         walkTextures: THREE.Texture[],
         backTextures: THREE.Texture[],
         startX: number,
         startY: number,
-        speed: number = 0.05,
+        speed: number = 0.10,
         leftBound: number = -5,
         rightBound: number = 5
     ) {
@@ -28,6 +30,7 @@ export class WalkingCharacter {
         this.speed = speed;
         this.leftBound = leftBound;
         this.rightBound = rightBound;
+        this.baseY = startY;
 
         const material = new THREE.SpriteMaterial({
             map: walkTextures[0],
@@ -56,6 +59,12 @@ export class WalkingCharacter {
                 this.walkCycle = (this.walkCycle + 1) % this.walkTextures.length;
                 this.updateTexture(this.walkCycle);
                 this.sprite.position.x += this.speed * this.direction;
+                // Add bobbing motion using easing
+                const bobPhase = this.walkCycle / this.walkTextures.length;
+                this.sprite.position.y = this.baseY - 0.1 + Easing.easeInOutSine(bobPhase) * 0.2;
+                // Add subtle scale variation
+                const scaleVar = 0.9 + Easing.easeInOutSine(bobPhase) * 0.1;
+                this.sprite.scale.set(3 * scaleVar, 3 * scaleVar, 1);
 
                 // Check bounds
                 if (this.sprite.position.x > this.rightBound) {
