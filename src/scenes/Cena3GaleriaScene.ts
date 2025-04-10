@@ -102,7 +102,7 @@ export class Cena3GaleriaScene extends Scene {
                 await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_back_1.png'),
                 await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_back_2.png')
             ];
-            this.bobCharacter = new WalkingCharacter(bobWalkTextures, bobBackTextures, -2, -2, 0.10, -5, 5, this.gameEngine.soundManager);
+            this.bobCharacter = new WalkingCharacter(bobWalkTextures, bobBackTextures, -2, -2, 0.10, -5, 5, this.gameEngine.soundManager, 'male');
             this.threeScene.add(this.bobCharacter.getSprite());
 
             // Create Marta character with separate walk/back textures
@@ -113,7 +113,7 @@ export class Cena3GaleriaScene extends Scene {
             const martaBackTextures = [
                 await this.assetLoader.loadTexture('assets/cena_3_galeria/marta_back_1.png')
             ];
-            this.martaCharacter = new WalkingCharacter(martaWalkTextures, martaBackTextures, 2, -2, 0.10, -5, 5, this.gameEngine.soundManager);
+            this.martaCharacter = new WalkingCharacter(martaWalkTextures, martaBackTextures, 2, -2, 0.10, -5, 5, this.gameEngine.soundManager, 'female');
             this.threeScene.add(this.martaCharacter.getSprite());
 
             // Load decision button textures
@@ -134,6 +134,16 @@ export class Cena3GaleriaScene extends Scene {
                 'gallery_ambient_2',
                 'cena_3_galeria/sounds/gallery_ambient_2.mp3',
                 true
+            );
+
+            // Load hurt sounds
+            await this.gameEngine.soundManager.loadSound(
+                'male_hurt',
+                'assets/cena_3_galeria/sounds/male_hurt.mp3'
+            );
+            await this.gameEngine.soundManager.loadSound(
+                'female_hurt',
+                'assets/cena_3_galeria/sounds/female_hurt.wav'
             );
 
             console.log("Cena3GaleriaScene initialized.");
@@ -267,6 +277,12 @@ export class Cena3GaleriaScene extends Scene {
             this.applyRotationImpulse(this.currentRotationVelocityXMesa, this.currentRotationVelocityYMesa);
         } else if (this.vitrolaPack && this.isObjectInHierarchy(clickedObject, this.vitrolaPack as THREE.Object3D)) {
             this.applyRotationImpulse(this.currentRotationVelocityXVitrola, this.currentRotationVelocityYVitrola);
+        } else if (this.bobCharacter && clickedObject === this.bobCharacter.getSprite()) {
+            this.gameEngine.soundManager.playSound('male_hurt', 0.8);
+        } else if (this.bobCharacter && clickedObject === this.bobCharacter.getSprite()) {
+            this.bobCharacter.playHurtSound();
+        } else if (this.martaCharacter && clickedObject === this.martaCharacter.getSprite()) {
+            this.martaCharacter.playHurtSound();
         }
 
         // Handle button clicks

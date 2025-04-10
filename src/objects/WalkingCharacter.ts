@@ -18,6 +18,7 @@ export class WalkingCharacter {
     private baseY: number;
     private soundManager: SoundManager;
     private lastStepSound: number = 0;
+    private gender: 'male' | 'female';
 
     constructor(
         walkTextures: THREE.Texture[],
@@ -27,7 +28,8 @@ export class WalkingCharacter {
         speed: number = 0.10,
         leftBound: number = -5,
         rightBound: number = 5,
-        soundManager: SoundManager
+        soundManager: SoundManager,
+        gender: 'male' | 'female' = 'male'
     ) {
         this.walkTextures = walkTextures;
         this.backTextures = backTextures;
@@ -36,10 +38,13 @@ export class WalkingCharacter {
         this.rightBound = rightBound;
         this.baseY = startY;
         this.soundManager = soundManager;
+        this.gender = gender;
 
-        // Load step sounds
+        // Load sounds
         soundManager.loadSound('step1', 'assets/sounds/step_1.wav');
         soundManager.loadSound('step2', 'assets/sounds/step_2.wav');
+        soundManager.loadSound('male_hurt', 'assets/cena_3_galeria/sounds/male_hurt.mp3');
+        soundManager.loadSound('female_hurt', 'assets/cena_3_galeria/sounds/female_hurt.wav');
 
         const material = new THREE.SpriteMaterial({
             map: walkTextures[0],
@@ -58,6 +63,11 @@ export class WalkingCharacter {
 
     public getSprite(): THREE.Sprite {
         return this.sprite;
+    }
+
+    public playHurtSound(): void {
+        const sound = this.gender === 'male' ? 'male_hurt' : 'female_hurt';
+        this.soundManager.playSound(sound, 0.8);
     }
 
     public update(deltaTime: number): void {
