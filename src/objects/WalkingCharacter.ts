@@ -2,7 +2,8 @@ import * as THREE from 'three';
 
 export class WalkingCharacter {
     private sprite: THREE.Sprite;
-    private textures: THREE.Texture[];
+    private walkTextures: THREE.Texture[];
+    private backTextures: THREE.Texture[];
     private walkCycle: number = 0;
     private walkTimer: number = 0;
     private lookTimer: number = 0;
@@ -14,26 +15,28 @@ export class WalkingCharacter {
     private rightBound: number;
 
     constructor(
-        textures: THREE.Texture[],
+        walkTextures: THREE.Texture[],
+        backTextures: THREE.Texture[],
         startX: number,
         startY: number,
         speed: number = 0.05,
         leftBound: number = -5,
         rightBound: number = 5
     ) {
-        this.textures = textures;
+        this.walkTextures = walkTextures;
+        this.backTextures = backTextures;
         this.speed = speed;
         this.leftBound = leftBound;
         this.rightBound = rightBound;
 
         const material = new THREE.SpriteMaterial({
-            map: textures[0],
+            map: walkTextures[0],
             transparent: true,
             side: THREE.DoubleSide
         });
         this.sprite = new THREE.Sprite(material);
         this.sprite.scale.set(3, 3, 1);
-        this.sprite.position.set(startX, startY, 0.1);
+        this.sprite.position.set(startX, startY, 3);
 
         // Random initial direction
         this.direction = Math.random() < 0.5 ? 1 : -1;
@@ -50,8 +53,8 @@ export class WalkingCharacter {
             this.walkTimer += deltaTime;
             if (this.walkTimer > 0.2) {
                 this.walkTimer = 0;
-                this.walkCycle = (this.walkCycle + 1) % 4;
-                this.updateTexture();
+                this.walkCycle = (this.walkCycle + 1) % this.walkTextures.length;
+                this.updateTexture(this.walkCycle);
                 this.sprite.position.x += this.speed * this.direction;
 
                 // Check bounds
@@ -71,7 +74,8 @@ export class WalkingCharacter {
                     this.sprite.position.x < this.rightBound - 1) {
                     this.isLooking = true;
                     this.lookTimer = 0;
-                    this.updateTexture(4 + Math.floor(Math.random() * 2));
+                    const backIndex = Math.floor(Math.random() * this.backTextures.length);
+                    this.updateTexture(this.walkTextures.length + backIndex);
                 }
             }
         } else {
@@ -85,7 +89,11 @@ export class WalkingCharacter {
 
     private updateTexture(index: number = this.walkCycle): void {
         const material = this.sprite.material as THREE.SpriteMaterial;
-        material.map = this.textures[index];
+        if (index < this.walkTextures.length) {
+            material.map = this.walkTextures[index];
+        } else {
+            material.map = this.backTextures[index - this.walkTextures.length];
+        }
         this.updateTextureFlip();
         material.needsUpdate = true;
     }
