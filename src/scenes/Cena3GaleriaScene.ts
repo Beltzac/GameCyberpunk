@@ -12,6 +12,12 @@ export class Cena3GaleriaScene extends Scene {
     private sceneManager: SceneManager;
     private backgroundSprite: THREE.Sprite | null = null;
     private characterSprites: THREE.Sprite[] = [];
+    private bobSprites: THREE.Sprite[] = [];
+    private bobTextures: THREE.Texture[] = [];
+    private bobWalkCycle: number = 0;
+    private bobWalkTimer: number = 0;
+    private bobLookTimer: number = 0;
+    private isBobLooking: boolean = false;
     private decisionButtons: THREE.Sprite[] = [];
     private buttonTextures: THREE.Texture[] = [];
     private currentSelection: number = -1;
@@ -106,6 +112,20 @@ export class Cena3GaleriaScene extends Scene {
             const otherCharSprite = this.createCharacterSprite(otherCharTexture, 3, 0);
             this.characterSprites.push(kairosSprite, otherCharSprite);
 
+            // Load Bob textures
+            this.bobTextures = [
+                await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_walk_1.png'),
+                await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_walk_2.png'),
+                await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_walk_3.png'),
+                await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_walk_4.png'),
+                await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_back_1.png'),
+                await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_back_2.png')
+            ];
+
+            // Create Bob sprite
+            const bobSprite = this.createCharacterSprite(this.bobTextures[0], 0, -2);
+            this.bobSprites.push(bobSprite);
+
             // Load decision button textures
             this.buttonTextures = [
                 await this.assetLoader.loadTexture('assets/cena_3_galeria/select_kairos.png'),
@@ -192,6 +212,36 @@ export class Cena3GaleriaScene extends Scene {
             const bob = Math.sin(Date.now() * 0.001 + offset) * 0.05;
             sprite.position.y += bob;
         });
+
+        // Animate Bob
+        if (this.bobSprites.length > 0) {
+            const bobSprite = this.bobSprites[0];
+
+            if (!this.isBobLooking) {
+                // Walking animation
+                this.bobWalkTimer += deltaTime;
+                if (this.bobWalkTimer > 0.2) {
+                    this.bobWalkTimer = 0;
+                    this.bobWalkCycle = (this.bobWalkCycle + 1) % 4;
+                    (bobSprite.material as THREE.SpriteMaterial).map = this.bobTextures[this.bobWalkCycle];
+                    bobSprite.position.x += 0.05;
+
+                    // Check if should stop to look
+                    if (Math.random() < 0.005) {
+                        this.isBobLooking = true;
+                        this.bobLookTimer = 0;
+                        (bobSprite.material as THREE.SpriteMaterial).map = this.bobTextures[4 + Math.floor(Math.random() * 2)];
+                    }
+                }
+            } else {
+                // Looking at art
+                this.bobLookTimer += deltaTime;
+                if (this.bobLookTimer > 2.0) {
+                    this.isBobLooking = false;
+                    (bobSprite.material as THREE.SpriteMaterial).map = this.bobTextures[0];
+                }
+            }
+        }
 
         // Highlight selected button
         this.decisionButtons.forEach((button, index) => {
