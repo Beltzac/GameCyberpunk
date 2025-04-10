@@ -5,24 +5,15 @@ import { AssetLoader } from '../utils/AssetLoader';
 import { SceneManager } from '../core/SceneManager';
 import { GameEngine } from '../core/GameEngine';
 import { Easing } from '../utils/Easing';
-import { HologramHelper } from '../utils/HologramHelper'; // Import the new helper
+import { HologramHelper } from '../utils/HologramHelper';
+import { WalkingCharacter } from '../objects/WalkingCharacter';
 
 export class Cena3GaleriaScene extends Scene {
     private assetLoader: AssetLoader;
     private sceneManager: SceneManager;
     private backgroundSprite: THREE.Sprite | null = null;
     private characterSprites: THREE.Sprite[] = [];
-    private bobSprites: THREE.Sprite[] = [];
-    private bobTextures: THREE.Texture[] = [];
-    private bobWalkCycle: number = 0;
-    private bobWalkTimer: number = 0;
-    private bobLookTimer: number = 0;
-    private isBobLooking: boolean = false;
-    private bobDirection: number = 1; // 1 for right, -1 for left
-    private isFlipped: boolean = false; // Track flip state separately
-    private readonly bobSpeed: number = 0.05;
-    private readonly screenLeftBound: number = -5;
-    private readonly screenRightBound: number = 5;
+    private bobCharacter: WalkingCharacter | null = null;
     private decisionButtons: THREE.Sprite[] = [];
     private buttonTextures: THREE.Texture[] = [];
     private currentSelection: number = -1;
@@ -117,8 +108,8 @@ export class Cena3GaleriaScene extends Scene {
             const otherCharSprite = this.createCharacterSprite(otherCharTexture, 3, 0);
             this.characterSprites.push(kairosSprite, otherCharSprite);
 
-            // Load Bob textures
-            this.bobTextures = [
+            // Create Bob character
+            const bobTextures = [
                 await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_walk_1.png'),
                 await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_walk_2.png'),
                 await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_walk_3.png'),
@@ -126,15 +117,8 @@ export class Cena3GaleriaScene extends Scene {
                 await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_back_1.png'),
                 await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_back_2.png')
             ];
-
-            // Create Bob sprite at random position
-            const startX = this.screenLeftBound + Math.random() *
-                         (this.screenRightBound - this.screenLeftBound);
-            this.bobDirection = Math.random() < 0.5 ? 1 : -1;
-
-            const bobSprite = this.createCharacterSprite(this.bobTextures[0], startX, -2.3);
-            bobSprite.scale.x = Math.abs(bobSprite.scale.x) * this.bobDirection;
-            this.bobSprites.push(bobSprite);
+            this.bobCharacter = new WalkingCharacter(bobTextures, 0, -2);
+            this.threeScene.add(this.bobCharacter.getSprite());
 
             // Load decision button textures
             this.buttonTextures = [
@@ -228,74 +212,10 @@ export class Cena3GaleriaScene extends Scene {
             sprite.position.y += bob;
         });
 
-        // Animate Bob
-        if (this.bobSprites.length > 0) {
-            const bobSprite = this.bobSprites[0];
-
-            if (!this.isBobLooking) {
-                // Walking animation
-                this.bobWalkTimer += deltaTime;
-                if (this.bobWalkTimer > 0.2) {
-                    this.bobWalkTimer = 0;
-                    this.bobWalkCycle = (this.bobWalkCycle + 1) % 4;
-                    const material = bobSprite.material as THREE.SpriteMaterial;
-                    material.map = this.bobTextures[this.bobWalkCycle];
-                    if (this.isFlipped) {
-                        material.map.repeat.x = -1;
-                        material.map.offset.x = 1;
-                    } else {
-                        material.map.repeat.x = 1;
-                        material.map.offset.x = 0;
-                    }
-                    material.map.needsUpdate = true;
-                    material.needsUpdate = true;
-                    bobSprite.position.x += this.bobSpeed * this.bobDirection;
-
-                    // Check screen bounds
-                    if (bobSprite.position.x > this.screenRightBound) {
-                        this.bobDirection = -1;
-                        this.isFlipped = true;
-                        bobSprite.scale.x = -Math.abs(bobSprite.scale.x);
-                        const material = bobSprite.material as THREE.SpriteMaterial;
-                        material.map = this.bobTextures[this.bobWalkCycle];
-                        material.map.repeat.x = -1;
-                        material.map.offset.x = 1;
-                        material.map.needsUpdate = true;
-                        material.needsUpdate = true;
-                        console.log(`Flipped left at x=${bobSprite.position.x.toFixed(2)}, new scale:`, bobSprite.scale);
-                    } else if (bobSprite.position.x < this.screenLeftBound) {
-                        this.bobDirection = 1;
-                        this.isFlipped = false;
-                        bobSprite.scale.x = Math.abs(bobSprite.scale.x);
-                        const material = bobSprite.material as THREE.SpriteMaterial;
-                        material.map = this.bobTextures[this.bobWalkCycle];
-                        material.map.repeat.x = 1;
-                        material.map.offset.x = 0;
-                        material.map.needsUpdate = true;
-                        material.needsUpdate = true;
-                        console.log(`Flipped right at x=${bobSprite.position.x.toFixed(2)}, new scale:`, bobSprite.scale);
-                    }
-
-                    // Check if should stop to look
-                    if (Math.random() < 0.005 &&
-                        bobSprite.position.x > this.screenLeftBound + 1 &&
-                        bobSprite.position.x < this.screenRightBound - 1) {
-                        this.isBobLooking = true;
-                        this.bobLookTimer = 0;
-                        (bobSprite.material as THREE.SpriteMaterial).map = this.bobTextures[4 + Math.floor(Math.random() * 2)];
-                    }
-                }
-            } else {
-                // Looking at art
-                this.bobLookTimer += deltaTime;
-                if (this.bobLookTimer > 2.0) {
-                    this.isBobLooking = false;
-                    (bobSprite.material as THREE.SpriteMaterial).map = this.bobTextures[0];
-                }
-            }
+        // Update Bob character
+        if (this.bobCharacter) {
+            this.bobCharacter.update(deltaTime);
         }
-
-        // Highlight selected button
         this.decisionButtons.forEach((button, index) => {
             const material = button.material as THREE.SpriteMaterial;
             material.opacity = this.currentSelection === index ? 1 : 0.7;
@@ -366,15 +286,15 @@ export class Cena3GaleriaScene extends Scene {
         // Custom rendering if needed
     }
 
-    public async handleClick(intersects: THREE.Intersection[]): Promise<void> {
-        if (!intersects.length) return;
+    async handleClick(intersects: THREE.Intersection[]): Promise<void> {
+        if (!intersects || intersects.length === 0) return;
 
         const clickedObject = intersects[0].object;
 
         // Handle model click (check if object is in plantaPack hierarchy)
         // Handle model click (check if object is in plantaPack hierarchy)
         // Handle plantaPack click
-        if (this.plantaPack && this.isObjectInHierarchy(clickedObject, this.plantaPack)) {
+        if (this.plantaPack && this.isObjectInHierarchy(clickedObject, this.plantaPack as THREE.Object3D)) {
             const randomYDirection = Math.random() < 0.5 ? -1 : 1;
             const randomXDirection = Math.random() < 0.5 ? -1 : 1;
             this.currentRotationVelocityYPlanta += this.rotationImpulse * randomYDirection;
@@ -382,7 +302,7 @@ export class Cena3GaleriaScene extends Scene {
         }
         // Handle mesa click
         // Handle mesaPack click
-        else if (this.mesaPack && this.isObjectInHierarchy(clickedObject, this.mesaPack)) {
+        else if (this.mesaPack && this.isObjectInHierarchy(clickedObject, this.mesaPack as THREE.Object3D)) {
              const randomYDirection = Math.random() < 0.5 ? -1 : 1;
              const randomXDirection = Math.random() < 0.5 ? -1 : 1;
              this.currentRotationVelocityYMesa += this.rotationImpulse * randomYDirection;
@@ -391,7 +311,7 @@ export class Cena3GaleriaScene extends Scene {
         }
         // Handle vitrola click
         // Handle vitrolaPack click
-        else if (this.vitrolaPack && this.isObjectInHierarchy(clickedObject, this.vitrolaPack)) {
+        else if (this.vitrolaPack && this.isObjectInHierarchy(clickedObject, this.vitrolaPack as THREE.Object3D)) {
              const randomYDirection = Math.random() < 0.5 ? -1 : 1;
              const randomXDirection = Math.random() < 0.5 ? -1 : 1;
              this.currentRotationVelocityYVitrola += this.rotationImpulse * randomYDirection;
