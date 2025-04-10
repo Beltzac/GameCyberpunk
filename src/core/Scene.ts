@@ -45,6 +45,7 @@ export abstract class Scene {
         const scaleX = (camera.right - camera.left);
         const scaleY = (camera.top - camera.bottom);
         backgroundSprite.scale.set(scaleX, scaleY, 1);
+        backgroundSprite.position.set(0, 0, -1); // Set z position to -1 to be behind other objects
         backgroundSprite.userData.isBackground = true;
         this.threeScene.add(backgroundSprite);
         return backgroundSprite;

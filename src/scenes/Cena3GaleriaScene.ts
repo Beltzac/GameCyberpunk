@@ -18,6 +18,10 @@ export class Cena3GaleriaScene extends Scene {
     private bobWalkTimer: number = 0;
     private bobLookTimer: number = 0;
     private isBobLooking: boolean = false;
+    private bobDirection: number = 1; // 1 for right, -1 for left
+    private readonly bobSpeed: number = 0.05;
+    private readonly screenLeftBound: number = -5;
+    private readonly screenRightBound: number = 5;
     private decisionButtons: THREE.Sprite[] = [];
     private buttonTextures: THREE.Texture[] = [];
     private currentSelection: number = -1;
@@ -62,8 +66,8 @@ export class Cena3GaleriaScene extends Scene {
         try {
             // Load 3D model (AssetLoader now returns the pivot group)
             this.plantaPack = await this.assetLoader.loadModel('cena_3_galeria/planta-cc.glb');
-            this.plantaPack.position.set(0, -1.5, 2.5); // Position center, slightly lower
-            this.plantaPack.scale.set(4, 4, 4); // Apply desired scale to the pivot
+            this.plantaPack.position.set(0, -1.5, 1); // Position center, slightly lower
+            this.plantaPack.scale.set(3, 3, 3); // Apply desired scale to the pivot
             // Apply shader using the helper class
             if (this.plantaPack) { // Ensure plantaPack is loaded before applying shader
                 HologramHelper.applyHologramShader(this.plantaPack); // Use helper class
@@ -74,7 +78,7 @@ export class Cena3GaleriaScene extends Scene {
             this.mesaPack = await this.assetLoader.loadModel('cena_3_galeria/mesa-cc.glb');
             if (this.mesaPack) {
                 HologramHelper.applyHologramShader(this.mesaPack); // Use helper class
-                this.mesaPack.position.set(-4, -1.5, 2.5); // Position left, slightly lower
+                this.mesaPack.position.set(-5, -1.5, 1); // Position left, slightly lower
                 this.mesaPack.scale.set(1, 1, 1);
                 this.threeScene.add(this.mesaPack);
             }
@@ -83,8 +87,8 @@ export class Cena3GaleriaScene extends Scene {
             this.vitrolaPack = await this.assetLoader.loadModel('cena_3_galeria/vitrola-cc.glb');
             if (this.vitrolaPack) {
                 HologramHelper.applyHologramShader(this.vitrolaPack); // Use helper class
-                this.vitrolaPack.position.set(4, -1.5, 2.5); // Position right, slightly lower
-                this.vitrolaPack.scale.set(4, 4, 4);
+                this.vitrolaPack.position.set(5, -1.5, 1); // Position right, slightly lower
+                this.vitrolaPack.scale.set(3, 3, 3);
                 this.threeScene.add(this.vitrolaPack);
             }
 
@@ -122,8 +126,13 @@ export class Cena3GaleriaScene extends Scene {
                 await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_back_2.png')
             ];
 
-            // Create Bob sprite
-            const bobSprite = this.createCharacterSprite(this.bobTextures[0], 0, -2);
+            // Create Bob sprite at random position
+            const startX = this.screenLeftBound + Math.random() *
+                         (this.screenRightBound - this.screenLeftBound);
+            this.bobDirection = Math.random() < 0.5 ? 1 : -1;
+
+            const bobSprite = this.createCharacterSprite(this.bobTextures[0], startX, -2.3);
+            bobSprite.scale.x = Math.abs(bobSprite.scale.x) * this.bobDirection;
             this.bobSprites.push(bobSprite);
 
             // Load decision button textures
@@ -171,7 +180,7 @@ export class Cena3GaleriaScene extends Scene {
         const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
         const sprite = new THREE.Sprite(material);
         sprite.scale.set(3, 3, 1);
-        sprite.position.set(x, y, 0.1);
+        sprite.position.set(x, y, 4);
         this.threeScene.add(sprite);
         return sprite;
     }
@@ -224,10 +233,23 @@ export class Cena3GaleriaScene extends Scene {
                     this.bobWalkTimer = 0;
                     this.bobWalkCycle = (this.bobWalkCycle + 1) % 4;
                     (bobSprite.material as THREE.SpriteMaterial).map = this.bobTextures[this.bobWalkCycle];
-                    bobSprite.position.x += 0.05;
+                    bobSprite.position.x += this.bobSpeed * this.bobDirection;
+
+                    // Check screen bounds
+                    if (bobSprite.position.x > this.screenRightBound) {
+                        this.bobDirection = -1;
+                        bobSprite.scale.x = -Math.abs(bobSprite.scale.x);
+                        (bobSprite.material as THREE.SpriteMaterial).map = this.bobTextures[0];
+                    } else if (bobSprite.position.x < this.screenLeftBound) {
+                        this.bobDirection = 1;
+                        bobSprite.scale.x = Math.abs(bobSprite.scale.x);
+                        (bobSprite.material as THREE.SpriteMaterial).map = this.bobTextures[0];
+                    }
 
                     // Check if should stop to look
-                    if (Math.random() < 0.005) {
+                    if (Math.random() < 0.005 &&
+                        bobSprite.position.x > this.screenLeftBound + 1 &&
+                        bobSprite.position.x < this.screenRightBound - 1) {
                         this.isBobLooking = true;
                         this.bobLookTimer = 0;
                         (bobSprite.material as THREE.SpriteMaterial).map = this.bobTextures[4 + Math.floor(Math.random() * 2)];
