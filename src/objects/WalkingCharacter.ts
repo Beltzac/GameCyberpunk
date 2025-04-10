@@ -128,13 +128,15 @@ export abstract class WalkingCharacter {
 
     protected updateTexture(index: number = this.walkCycle): void {
         const material = this.sprite.material as THREE.SpriteMaterial;
-        if (index < this.walkTextures.length) {
-            material.map = this.walkTextures[index];
-        } else {
-            material.map = this.backTextures[index - this.walkTextures.length];
+        const newTexture = index < this.walkTextures.length
+            ? this.walkTextures[index]
+            : this.backTextures[index - this.walkTextures.length];
+
+        if (material.map !== newTexture) {
+            material.map = newTexture;
+            this.updateTextureFlip();
+            material.needsUpdate = true;
         }
-        this.updateTextureFlip();
-        material.needsUpdate = true;
     }
 
     protected updateTextureFlip(): void {

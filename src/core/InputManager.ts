@@ -263,7 +263,8 @@ export class InputManager {
                 color: new THREE.Color(0xffffff),
                 emissive: new THREE.Color(0x000000),
                 emissiveIntensity: 0,
-                shininess: 0
+                shininess: 0,
+                opacity: 0.9
             });
 
             this.cursorMesh = new THREE.Mesh(
