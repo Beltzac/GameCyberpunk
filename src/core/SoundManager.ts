@@ -10,6 +10,7 @@ export class SoundManager {
     private loadingPromises: Map<string, Promise<void>> = new Map(); // Track loading sounds
     private isAudioAllowed = false;
     private queuedSounds: Array<() => void> = [];
+    private defaultVolumes: Map<string, number> = new Map();
 
     constructor(camera: THREE.Camera, assetLoader: AssetLoader) {
         this.audioListener = new THREE.AudioListener();
@@ -43,7 +44,7 @@ export class SoundManager {
         this.queuedSounds = [];
     }
 
-    public loadSound(name: string, url: string, isBackground: boolean = false): Promise<void> {
+    public loadSound(name: string, url: string, isBackground: boolean = false, volume: number = 0.5): Promise<void> {
         // If already loaded or loading, return existing promise or resolve immediately
         if (this.sounds.has(name) || this.backgroundSounds.has(name)) {
             console.log(`[SoundManager] Sound ${name} already loaded.`);
@@ -65,11 +66,11 @@ export class SoundManager {
                 if (isBackground) {
                     sound.setLoop(true);
                     this.backgroundSounds.set(name, sound);
-                    console.log(`[SoundManager] Added background sound ${name}`);
                 } else {
                     this.sounds.set(name, sound);
-                    console.log(`[SoundManager] Added sound effect ${name}`);
                 }
+                this.defaultVolumes.set(name, volume);
+                sound.setVolume(volume);
             } catch (error) {
                 console.error(`[SoundManager] Failed to load sound ${name}:`, error);
                 // Rethrow so the caller knows loading failed
@@ -179,5 +180,30 @@ export class SoundManager {
         console.log('[SoundManager] Cleared all sound effects');
         this.backgroundSounds.clear();
         console.log('[SoundManager] Cleared all background sounds');
+    }
+
+    public muteAll(isMuted: boolean): void {
+        if (isMuted) {
+            this.sounds.forEach((sound, name) => {
+                sound.setVolume(0);
+            });
+            this.backgroundSounds.forEach((sound, name) => {
+                sound.setVolume(0);
+            });
+        } else {
+            this.sounds.forEach((sound, name) => {
+                const defaultVolume = this.defaultVolumes.get(name);
+                if (defaultVolume !== undefined) {
+                    sound.setVolume(defaultVolume);
+                }
+            });
+            this.backgroundSounds.forEach((sound, name) => {
+                const defaultVolume = this.defaultVolumes.get(name);
+                if (defaultVolume !== undefined) {
+                    sound.setVolume(defaultVolume);
+                }
+            });
+        }
+        console.log(`[SoundManager] All sounds ${isMuted ? 'muted' : 'unmuted'}`);
     }
 }

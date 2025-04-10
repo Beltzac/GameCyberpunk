@@ -5,8 +5,10 @@ import { UIManager } from '../ui/UIManager'; // Import UIManager
 import { GameState } from './GameState';
 import { AssetLoader } from '../utils/AssetLoader';
 import { SoundManager } from './SoundManager';
+import { createGameLoop } from '@wmcmurray/game-loop-js';
 
 const CAMERA_FRUSTUM_SIZE = 8; // Centralized camera frustum size
+const TARGET_FPS = 60;
 
 export class GameEngine {
     private canvas: HTMLCanvasElement;
@@ -15,7 +17,6 @@ export class GameEngine {
         return this.renderer;
     }
     public camera: THREE.OrthographicCamera; // Made public
-    private clock: THREE.Clock;
 
     public gameState: GameState;
     public sceneManager: SceneManager; // Keep only one declaration
@@ -23,6 +24,8 @@ export class GameEngine {
     public uiManager: UIManager; // Add UIManager property
     public assetLoader: AssetLoader;
     public soundManager: SoundManager;
+    private gameLoop: any;
+    private clock: THREE.Clock;
     private animationFrameId: number | null = null;
 
     constructor(canvas: HTMLCanvasElement) {
@@ -38,7 +41,6 @@ export class GameEngine {
         this.renderer.localClippingEnabled = true; // Re-enable for post clipping
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(window.devicePixelRatio);
-
 
         // Basic Camera
         const aspect = window.innerWidth / window.innerHeight;
@@ -103,7 +105,7 @@ export class GameEngine {
 
         console.log("GameEngine: Starting main loop...");
         this.clock.start();
-        this.gameLoop(); // Start the loop
+        this.startGameLoop(); // Start the loop
     }
 
     public stop(): void {
@@ -117,25 +119,25 @@ export class GameEngine {
         }
     }
 
-    private gameLoop(): void {
-        this.animationFrameId = requestAnimationFrame(this.gameLoop.bind(this));
+    private startGameLoop(): void {
+        this.gameLoop = createGameLoop((deltaTime: number) => {
+            const currentScene = this.sceneManager.currentScene;
 
-        const deltaTime = this.clock.getDelta();
-        const currentScene = this.sceneManager.currentScene;
+            if (currentScene) {
+                // 1. Update game logic
+                currentScene.update(deltaTime);
+                // 2. Update InputManager (handles cursor position and click animations)
+                this.inputManager.update(deltaTime);
+                this.uiManager.update(); // Update UI Manager (though currently minimal)
+                // 3. Render the scene
+                this.renderer.render(currentScene.threeScene, this.camera);
+            } else {
+                // Optionally clear the screen if no scene is active
+                this.renderer.clear();
+            }
+        }, TARGET_FPS);
 
-        if (currentScene) {
-            // 1. Update game logic
-            currentScene.update(deltaTime);
-            // 2. Update InputManager (handles cursor position and click animations)
-            this.inputManager.update(deltaTime);
-            this.uiManager.update(); // Update UI Manager (though currently minimal)
-            // 3. Render the scene
-            this.renderer.render(currentScene.threeScene, this.camera);
-        } else {
-            // Optionally clear the screen if no scene is active
-            this.renderer.clear();
-            // console.log("GameEngine: No active scene to render/update."); // Avoid logging every frame
-        }
+        this.renderer.setAnimationLoop(this.gameLoop.loop.bind(this.gameLoop));
     }
 
     private onWindowResize(): void {

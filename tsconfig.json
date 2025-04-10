@@ -11,6 +11,6 @@
     "forceConsistentCasingInFileNames": true,
     "lib": ["ES6", "DOM"]
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "./game-loop-js.d.ts"],
   "exclude": ["node_modules"]
 }

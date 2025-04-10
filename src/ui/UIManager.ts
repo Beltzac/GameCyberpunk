@@ -1,16 +1,21 @@
 // src/ui/UIManager.ts
 import { SceneManager } from '../core/SceneManager'; // Import SceneManager
+import { SoundManager } from '../core/SoundManager'; // Import SoundManager
 
 export class UIManager {
     private debugOverlay: HTMLElement | null = null;
-    private sceneManager: SceneManager | null = null; // Add SceneManager reference
+    private sceneManager: SceneManager | null = null;
+    private soundManager: SoundManager | null = null;
     private readonly initialSceneStorageKey = 'debug_initialScene';
+    private fpsCounter: HTMLElement | null = null;
+    private lastFrameTime: number = 0;
+    private frameCount: number = 0;
 
     constructor() {
         console.log("UIManager initialized");
         this.createDebugOverlay();
-        // Hide overlay initially
         this.hideDebugOverlay();
+        this.lastFrameTime = performance.now();
     }
 
     // Method to inject SceneManager dependency
@@ -18,6 +23,10 @@ export class UIManager {
         this.sceneManager = sceneManager;
         // Populate scenes once SceneManager is available
         this.populateSceneSelector();
+    }
+
+    public setSoundManager(soundManager: SoundManager): void {
+        this.soundManager = soundManager;
     }
 
     private createDebugOverlay(): void {
@@ -84,6 +93,31 @@ export class UIManager {
         closeButton.onclick = () => this.hideDebugOverlay();
         this.debugOverlay.appendChild(closeButton);
 
+        // Sound Toggle Section
+        const soundToggleLabel = document.createElement('label');
+        soundToggleLabel.textContent = 'Disable Sound: ';
+        soundToggleLabel.style.display = 'block';
+        soundToggleLabel.style.marginTop = '10px';
+        this.debugOverlay.appendChild(soundToggleLabel);
+
+        const soundToggle = document.createElement('input');
+        soundToggle.type = 'checkbox';
+        soundToggle.id = 'debug-sound-toggle';
+        soundToggle.onchange = () => this.toggleSound();
+        soundToggleLabel.appendChild(soundToggle);
+
+        // FPS Counter Section
+        const fpsLabel = document.createElement('label');
+        fpsLabel.textContent = 'FPS: ';
+        fpsLabel.style.display = 'block';
+        fpsLabel.style.marginTop = '10px';
+        this.debugOverlay.appendChild(fpsLabel);
+
+        this.fpsCounter = document.createElement('span');
+        this.fpsCounter.id = 'debug-fps-counter';
+        this.fpsCounter.textContent = '0';
+        this.fpsCounter.style.fontWeight = 'bold';
+        fpsLabel.appendChild(this.fpsCounter);
 
         document.body.appendChild(this.debugOverlay);
         console.log("Debug overlay created.");
@@ -169,7 +203,22 @@ export class UIManager {
 
     // Methods for updating UI, showing/hiding elements, etc.
     public update(): void {
-        // Update UI based on game state (if needed)
+        this.updateFPSCounter();
+    }
+
+    private updateFPSCounter(): void {
+        if (!this.fpsCounter) return;
+
+        const currentTime = performance.now();
+        const deltaTime = currentTime - this.lastFrameTime;
+
+        if (deltaTime >= 1000) {
+            this.fpsCounter.textContent = this.frameCount.toString();
+            this.frameCount = 0;
+            this.lastFrameTime = currentTime;
+        } else {
+            this.frameCount++;
+        }
     }
 
     public showScreen(screenId: string): void {
@@ -180,5 +229,13 @@ export class UIManager {
     public hideScreen(screenId: string): void {
         console.log(`UIManager: Hiding screen ${screenId} (placeholder)`);
         // Placeholder for other UI screens
+    }
+
+    private toggleSound(): void {
+        const soundToggle = this.debugOverlay?.querySelector<HTMLInputElement>('#debug-sound-toggle');
+        if (soundToggle && this.soundManager) {
+            this.soundManager.muteAll(soundToggle.checked);
+            console.log(`Sound ${soundToggle.checked ? 'muted' : 'unmuted'}`);
+        }
     }
 }
