@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Easing } from '../utils/Easing';
+import { SoundManager } from '../core/SoundManager';
 
 export class WalkingCharacter {
     private sprite: THREE.Sprite;
@@ -15,6 +16,8 @@ export class WalkingCharacter {
     private leftBound: number;
     private rightBound: number;
     private baseY: number;
+    private soundManager: SoundManager;
+    private lastStepSound: number = 0;
 
     constructor(
         walkTextures: THREE.Texture[],
@@ -23,7 +26,8 @@ export class WalkingCharacter {
         startY: number,
         speed: number = 0.10,
         leftBound: number = -5,
-        rightBound: number = 5
+        rightBound: number = 5,
+        soundManager: SoundManager
     ) {
         this.walkTextures = walkTextures;
         this.backTextures = backTextures;
@@ -31,6 +35,11 @@ export class WalkingCharacter {
         this.leftBound = leftBound;
         this.rightBound = rightBound;
         this.baseY = startY;
+        this.soundManager = soundManager;
+
+        // Load step sounds
+        soundManager.loadSound('step1', 'assets/sounds/step_1.wav');
+        soundManager.loadSound('step2', 'assets/sounds/step_2.wav');
 
         const material = new THREE.SpriteMaterial({
             map: walkTextures[0],
@@ -54,11 +63,17 @@ export class WalkingCharacter {
     public update(deltaTime: number): void {
         if (!this.isLooking) {
             this.walkTimer += deltaTime;
-            if (this.walkTimer > 0.2) {
+            if (this.walkTimer > 0.4) {
                 this.walkTimer = 0;
                 this.walkCycle = (this.walkCycle + 1) % this.walkTextures.length;
                 this.updateTexture(this.walkCycle);
                 this.sprite.position.x += this.speed * this.direction;
+
+                // Play step sound
+                const stepSound = this.lastStepSound === 1 ? 'step2' : 'step1';
+                this.soundManager.playSound(stepSound, 0.3);
+                this.lastStepSound = this.lastStepSound === 1 ? 2 : 1;
+
                 // Add bobbing motion using easing
                 const bobPhase = this.walkCycle / this.walkTextures.length;
                 this.sprite.position.y = this.baseY - 0.1 + Easing.easeInOutSine(bobPhase) * 0.2;
@@ -89,7 +104,7 @@ export class WalkingCharacter {
             }
         } else {
             this.lookTimer += deltaTime;
-            if (this.lookTimer > 2.0) {
+            if (this.lookTimer > 4.0) {
                 this.isLooking = false;
                 this.updateTexture(0);
             }

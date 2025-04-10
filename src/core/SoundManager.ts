@@ -110,7 +110,7 @@ export class SoundManager {
 
         // Now try to play the sound if it exists
         if (sound) {
-            console.log(`[SoundManager] Playing sound ${name} at volume ${volume}`);
+            //console.log(`[SoundManager] Playing sound ${name} at volume ${volume}`);
             sound.setVolume(volume);
             // Ensure sound is not already playing if play() doesn't handle it
             if (sound.isPlaying) {

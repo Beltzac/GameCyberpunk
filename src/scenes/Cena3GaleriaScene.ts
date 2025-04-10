@@ -102,7 +102,7 @@ export class Cena3GaleriaScene extends Scene {
                 await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_back_1.png'),
                 await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_back_2.png')
             ];
-            this.bobCharacter = new WalkingCharacter(bobWalkTextures, bobBackTextures, -2, -2);
+            this.bobCharacter = new WalkingCharacter(bobWalkTextures, bobBackTextures, -2, -2, 0.10, -5, 5, this.gameEngine.soundManager);
             this.threeScene.add(this.bobCharacter.getSprite());
 
             // Create Marta character with separate walk/back textures
@@ -113,7 +113,7 @@ export class Cena3GaleriaScene extends Scene {
             const martaBackTextures = [
                 await this.assetLoader.loadTexture('assets/cena_3_galeria/marta_back_1.png')
             ];
-            this.martaCharacter = new WalkingCharacter(martaWalkTextures, martaBackTextures, 2, -2);
+            this.martaCharacter = new WalkingCharacter(martaWalkTextures, martaBackTextures, 2, -2, 0.10, -5, 5, this.gameEngine.soundManager);
             this.threeScene.add(this.martaCharacter.getSprite());
 
             // Load decision button textures
@@ -131,8 +131,8 @@ export class Cena3GaleriaScene extends Scene {
 
             // Load sounds
             await this.gameEngine.soundManager.loadSound(
-                'gallery_ambient',
-                'cena_3_galeria/sounds/ambient.mp3',
+                'gallery_ambient_2',
+                'cena_3_galeria/sounds/gallery_ambient_2.mp3',
                 true
             );
 
@@ -182,7 +182,7 @@ export class Cena3GaleriaScene extends Scene {
     }
 
     async onEnter(): Promise<void> {
-        await this.gameEngine.soundManager.playBackground('gallery_ambient', 0.8);
+        await this.gameEngine.soundManager.playBackground('gallery_ambient_2', 0.3);
         setTimeout(() => {
             this.decisionButtons.forEach(button => {
                 button.visible = true;
