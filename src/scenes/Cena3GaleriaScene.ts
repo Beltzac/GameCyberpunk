@@ -1,4 +1,4 @@
-// src/scenes/Cena3GaleriaScene.ts
+
 import * as THREE from 'three';
 import { Scene } from '../core/Scene';
 import { AssetLoader } from '../utils/AssetLoader';
@@ -6,7 +6,7 @@ import { SceneManager } from '../core/SceneManager';
 import { GameEngine } from '../core/GameEngine';
 import { Easing } from '../utils/Easing';
 import { HologramHelper } from '../utils/HologramHelper';
-import { WalkingCharacter } from '../objects/WalkingCharacter';
+import { BobCharacter, MartaCharacter, WalkingCharacter } from '../objects/WalkingCharacter';
 
 export class Cena3GaleriaScene extends Scene {
     private assetLoader: AssetLoader;
@@ -91,29 +91,10 @@ export class Cena3GaleriaScene extends Scene {
             //const otherCharSprite = this.createCharacterSprite(otherCharTexture, 3, 0);
             //this.characterSprites.push(kairosSprite, otherCharSprite);
 
-            // Create Bob character with separate walk/back textures
-            const bobWalkTextures = [
-                await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_walk_1.png'),
-                await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_walk_2.png'),
-                await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_walk_3.png'),
-                await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_walk_4.png')
-            ];
-            const bobBackTextures = [
-                await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_back_1.png'),
-                await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_back_2.png')
-            ];
-            this.bobCharacter = new WalkingCharacter(bobWalkTextures, bobBackTextures, -2, -2, 0.10, -5, 5, this.gameEngine.soundManager, 'male');
+            this.bobCharacter = await BobCharacter.create(-2, -2, 0.10, -5, 5, this.gameEngine.soundManager, this.assetLoader);
             this.threeScene.add(this.bobCharacter.getSprite());
 
-            // Create Marta character with separate walk/back textures
-            const martaWalkTextures = [
-                await this.assetLoader.loadTexture('assets/cena_3_galeria/marta_walk_1.png'),
-                await this.assetLoader.loadTexture('assets/cena_3_galeria/marta_walk_2.png')
-            ];
-            const martaBackTextures = [
-                await this.assetLoader.loadTexture('assets/cena_3_galeria/marta_back_1.png')
-            ];
-            this.martaCharacter = new WalkingCharacter(martaWalkTextures, martaBackTextures, 2, -2, 0.10, -5, 5, this.gameEngine.soundManager, 'female');
+            this.martaCharacter = await MartaCharacter.create(2, -2, 0.10, -5, 5, this.gameEngine.soundManager, this.assetLoader);
             this.threeScene.add(this.martaCharacter.getSprite());
 
             // Load decision button textures
