@@ -19,6 +19,7 @@ export class Cena3GaleriaScene extends Scene {
     private bobLookTimer: number = 0;
     private isBobLooking: boolean = false;
     private bobDirection: number = 1; // 1 for right, -1 for left
+    private isFlipped: boolean = false; // Track flip state separately
     private readonly bobSpeed: number = 0.05;
     private readonly screenLeftBound: number = -5;
     private readonly screenRightBound: number = 5;
@@ -177,11 +178,16 @@ export class Cena3GaleriaScene extends Scene {
     }
 
     private createCharacterSprite(texture: THREE.Texture, x: number, y: number): THREE.Sprite {
-        const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+        const material = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+            side: THREE.DoubleSide // Ensure material works when flipped
+        });
         const sprite = new THREE.Sprite(material);
         sprite.scale.set(3, 3, 1);
-        sprite.position.set(x, y, 4);
+        sprite.position.set(x, y, 0.1);
         this.threeScene.add(sprite);
+        console.log(`Created sprite at (${x},${y}) with initial scale:`, sprite.scale);
         return sprite;
     }
 
@@ -232,18 +238,42 @@ export class Cena3GaleriaScene extends Scene {
                 if (this.bobWalkTimer > 0.2) {
                     this.bobWalkTimer = 0;
                     this.bobWalkCycle = (this.bobWalkCycle + 1) % 4;
-                    (bobSprite.material as THREE.SpriteMaterial).map = this.bobTextures[this.bobWalkCycle];
+                    const material = bobSprite.material as THREE.SpriteMaterial;
+                    material.map = this.bobTextures[this.bobWalkCycle];
+                    if (this.isFlipped) {
+                        material.map.repeat.x = -1;
+                        material.map.offset.x = 1;
+                    } else {
+                        material.map.repeat.x = 1;
+                        material.map.offset.x = 0;
+                    }
+                    material.map.needsUpdate = true;
+                    material.needsUpdate = true;
                     bobSprite.position.x += this.bobSpeed * this.bobDirection;
 
                     // Check screen bounds
                     if (bobSprite.position.x > this.screenRightBound) {
                         this.bobDirection = -1;
+                        this.isFlipped = true;
                         bobSprite.scale.x = -Math.abs(bobSprite.scale.x);
-                        (bobSprite.material as THREE.SpriteMaterial).map = this.bobTextures[0];
+                        const material = bobSprite.material as THREE.SpriteMaterial;
+                        material.map = this.bobTextures[this.bobWalkCycle];
+                        material.map.repeat.x = -1;
+                        material.map.offset.x = 1;
+                        material.map.needsUpdate = true;
+                        material.needsUpdate = true;
+                        console.log(`Flipped left at x=${bobSprite.position.x.toFixed(2)}, new scale:`, bobSprite.scale);
                     } else if (bobSprite.position.x < this.screenLeftBound) {
                         this.bobDirection = 1;
+                        this.isFlipped = false;
                         bobSprite.scale.x = Math.abs(bobSprite.scale.x);
-                        (bobSprite.material as THREE.SpriteMaterial).map = this.bobTextures[0];
+                        const material = bobSprite.material as THREE.SpriteMaterial;
+                        material.map = this.bobTextures[this.bobWalkCycle];
+                        material.map.repeat.x = 1;
+                        material.map.offset.x = 0;
+                        material.map.needsUpdate = true;
+                        material.needsUpdate = true;
+                        console.log(`Flipped right at x=${bobSprite.position.x.toFixed(2)}, new scale:`, bobSprite.scale);
                     }
 
                     // Check if should stop to look
