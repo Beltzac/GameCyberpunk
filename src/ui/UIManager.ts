@@ -1,4 +1,7 @@
 // src/ui/UIManager.ts
+import * as THREE from 'three'; // Import THREE
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader'; // Import FontLoader
+import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry'; // Import TextGeometry
 import { SceneManager } from '../core/SceneManager'; // Import SceneManager
 import { SoundManager } from '../core/SoundManager'; // Import SoundManager
 
@@ -10,6 +13,12 @@ export class UIManager {
     private fpsCounter: HTMLElement | null = null;
     private lastFrameTime: number = 0;
     private frameCount: number = 0;
+
+    // Properties for 3D message text
+    private messageText: THREE.Mesh | null = null;
+    private messageTimeout: number | null = null;
+    private font: any | null = null; // To store the loaded font (using any to avoid Font export error)
+    private currentScene: THREE.Scene | null = null; // Reference to the current scene
 
     constructor() {
         console.log("UIManager initialized");
@@ -27,6 +36,15 @@ export class UIManager {
 
     public setSoundManager(soundManager: SoundManager): void {
         this.soundManager = soundManager;
+    }
+
+    // Method to set the current Three.js scene
+    public setCurrentScene(scene: THREE.Scene): void {
+        this.currentScene = scene;
+        // If a message is currently displayed, add it to the new scene
+        if (this.messageText) {
+            this.currentScene.add(this.messageText);
+        }
     }
 
     private createDebugOverlay(): void {
@@ -159,82 +177,193 @@ export class UIManager {
 
 
         document.body.appendChild(this.debugOverlay);
-        this.createMessageOverlay(); // Create the message overlay
         console.log("Debug overlay created.");
     }
 
-    private messageOverlay: HTMLElement | null = null;
-    private messageTimeout: number | null = null;
-
-    private createMessageOverlay(): void {
-        // Load custom font
-        const style = document.createElement('style');
-        style.innerHTML = `
-            @font-face {
-                font-family: 'Thata-Regular';
-                src: url('src/assets/fonts/Thata-Regular-2024-08-15.ttf') format('truetype');
-                font-weight: normal;
-                font-style: normal;
-            }
-        `;
-        document.head.appendChild(style);
-
-        this.messageOverlay = document.createElement('div');
-        this.messageOverlay.id = 'message-overlay';
-        this.messageOverlay.style.position = 'absolute';
-        this.messageOverlay.style.top = '50%';
-        this.messageOverlay.style.left = '50%';
-        this.messageOverlay.style.transform = 'translate(-50%, -50%)';
-        this.messageOverlay.style.backgroundColor = 'rgba(70, 130, 180, 0.8)'; // SteelBlue with transparency
-        this.messageOverlay.style.color = '#00ffff'; // Cyan
-        this.messageOverlay.style.padding = '25px'; // Slightly more padding
-        this.messageOverlay.style.border = '2px solid #00ffff'; // Cyan border
-        this.messageOverlay.style.boxShadow = '0 0 10px #00ffff'; // Cyan glow
-        this.messageOverlay.style.borderRadius = '5px'; // Sharper corners
-        this.messageOverlay.style.fontFamily = 'Thata-Regular, sans-serif'; // Use custom font
-        this.messageOverlay.style.fontSize = '28px'; // Slightly larger font
-        this.messageOverlay.style.textAlign = 'center';
-        this.messageOverlay.style.zIndex = '1000'; // Below debug overlay
-        this.messageOverlay.style.display = 'none'; // Start hidden
-        this.messageOverlay.style.pointerEvents = 'none'; // Don't block clicks
-        this.messageOverlay.style.textShadow = '0 0 5px #00ffff'; // Text glow
-
-        document.body.appendChild(this.messageOverlay);
-        console.log("Message overlay created.");
+    // Method to load the font (call this during UIManager initialization or scene loading)
+    public async loadFont(fontPath: string): Promise<void> {
+        return new Promise((resolve, reject) => {
+            const loader = new FontLoader();
+            loader.load(
+                fontPath,
+                (font) => {
+                    this.font = font;
+                    console.log("Font loaded successfully:", fontPath, font);
+                    resolve();
+                },
+                undefined,
+                (error) => {
+                    console.error("Error loading font:", fontPath, error);
+                    reject(error);
+                }
+            );
+        });
     }
 
-    public showMessage(message: string, duration: number = 2000, top?: string, left?: string): void {
-        if (!this.messageOverlay) return;
+    // Method to set the current Three.js scene
 
-        // Clear any existing timeout
+    // Method to create and show 3D message text
+    public showMessage(message: string, duration: number = 2000, position?: THREE.Vector3): THREE.Mesh | null {
+        if (!this.font) {
+            console.error("showMessage: Font not loaded. Cannot show message.");
+            return null;
+        }
+        if (!this.currentScene) {
+            console.error("showMessage: Current scene not set. Cannot show message in 3D.");
+            return null;
+        }
+
+        // Log camera info (assume camera is a child of the scene or accessible globally)
+        let camera = null;
+        if ((this.currentScene as any).userData && (this.currentScene as any).userData.camera) {
+            camera = (this.currentScene as any).userData.camera;
+        } else if ((window as any).gameEngine && (window as any).gameEngine.camera) {
+            camera = (window as any).gameEngine.camera;
+        }
+        if (camera) {
+            console.log("showMessage: Camera info", {
+                position: camera.position,
+                type: camera.type,
+                rotation: camera.rotation,
+                up: camera.up,
+                lookAt: camera.getWorldDirection ? camera.getWorldDirection(new THREE.Vector3()) : undefined
+            });
+        } else {
+            console.warn("showMessage: Camera not found in scene or global.");
+        }
+
+        // Log font object
+        console.log("showMessage: Loaded font object", this.font);
+
+        // Clear any existing message and timeout
+        this.hideMessage(); // Use the new hide method
+
+        console.log("showMessage: Creating message mesh", { message, duration, position, font: this.font, scene: this.currentScene });
+
+        const textGeometry = new TextGeometry(message, {
+             font: this.font,
+            // size: 2, // Large size for visibility
+            // depth: 0.2, // Thicker for visibility
+            // curveSegments: 12,
+            // bevelEnabled: false,
+            size: 1,
+            depth: 1,
+            curveSegments: 12,
+            bevelEnabled: true,
+            bevelThickness: 0.1,
+            bevelSize: 0.1,
+            bevelOffset: 0,
+            bevelSegments: 5
+        });
+
+        textGeometry.computeBoundingBox();
+        const textWidth = textGeometry.boundingBox!.max.x - textGeometry.boundingBox!.min.x;
+        const bbox = textGeometry.boundingBox;
+        console.log("showMessage: TextGeometry bounding box", bbox);
+        if (textGeometry.attributes && textGeometry.attributes.position) {
+            console.log("showMessage: TextGeometry vertex count", textGeometry.attributes.position.count);
+            // Log first 10 vertex positions
+            const pos = textGeometry.attributes.position;
+            const verts = [];
+            for (let i = 0; i < Math.min(10, pos.count); i++) {
+                verts.push([pos.getX(i), pos.getY(i), pos.getZ(i)]);
+            }
+            console.log("showMessage: First 10 vertex positions", verts);
+        } else {
+            console.log("showMessage: TextGeometry has no position attribute");
+        }
+
+        // Try disabling face culling on the material
+        // Log index and groups for further diagnosis
+        console.log("showMessage: TextGeometry index", textGeometry.getIndex());
+        console.log("showMessage: TextGeometry groups", textGeometry.groups);
+
+        // Try using MeshNormalMaterial for further diagnosis
+        const textMaterial = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
+
+        this.messageText = new THREE.Mesh(textGeometry, textMaterial);
+
+        // Also try rendering as points for diagnosis
+        //const pointsMaterial = new THREE.PointsMaterial({ color: 0x00ff00, size: 0.2 });
+        //const points = new THREE.Points(textGeometry, pointsMaterial);
+
+        // Set position - default to a position if none provided
+        if (position) {
+            this.messageText.position.copy(position);
+            //points.position.copy(position);
+        } else {
+            // Center: directly in front of camera at (0,0,2)
+            this.messageText.position.set(0, 0, 2);
+            //points.position.set(0, 0, 2);
+        }
+
+        // Remove horizontal centering (no adjustment)
+        // Apply a reasonable scale factor for visibility
+        this.messageText.scale.set(1, 1, 1);
+        //points.scale.set(1, 1, 1);
+
+        // Add to the current scene
+        this.currentScene.add(this.messageText);
+        //this.currentScene.add(points);
+
+        // Add a debug box at the same position for comparison
+        const debugBoxGeo = new THREE.BoxGeometry(1, 1, 1);
+        const debugBoxMat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+        const debugBox = new THREE.Mesh(debugBoxGeo, debugBoxMat);
+        debugBox.position.copy(this.messageText.position);
+        debugBox.position.z += 0.5; // Slightly in front of text
+        this.currentScene.add(debugBox);
+        console.log("showMessage: Added debug box at", debugBox.position);
+
+        console.log("showMessage: Mesh created and added to scene", this.messageText);
+        //console.log("showMessage: Points created and added to scene", points);
+
+        // Set timeout to hide the message, points, and debug box
+        this.messageTimeout = setTimeout(() => {
+            this.hideMessage();
+          //  this.currentScene && this.currentScene.remove(points);
+           // points.geometry.dispose();
+            //if (points.material) {
+              //  if (Array.isArray(points.material)) {
+                   // points.material.forEach(m => m.dispose());
+               // } else {
+                   // points.material.dispose();
+              //  }
+           // }
+            this.currentScene && this.currentScene.remove(debugBox);
+            debugBox.geometry.dispose();
+            if (debugBox.material) {
+                if (Array.isArray(debugBox.material)) {
+                    debugBox.material.forEach(m => m.dispose());
+                } else {
+                    debugBox.material.dispose();
+                }
+            }
+        }, duration) as any;
+
+        return this.messageText; // Return the created mesh
+    }
+
+    // Method to hide the 3D message text
+    public hideMessage(): void {
+        if (this.messageText && this.currentScene) {
+            this.currentScene.remove(this.messageText);
+            if (this.messageText.geometry) this.messageText.geometry.dispose();
+            if (this.messageText.material) {
+                if (Array.isArray(this.messageText.material)) {
+                    this.messageText.material.forEach(m => m.dispose());
+                } else {
+                    this.messageText.material.dispose();
+                }
+            }
+            this.messageText = null;
+        }
         if (this.messageTimeout !== null) {
             clearTimeout(this.messageTimeout);
-        }
-
-        this.messageOverlay.textContent = message;
-        this.messageOverlay.style.display = 'block';
-
-        // Set position based on parameters or use default center
-        if (top !== undefined && left !== undefined) {
-            this.messageOverlay.style.top = top;
-            this.messageOverlay.style.left = left;
-            this.messageOverlay.style.transform = 'translate(-50%, -50%)'; // Still center the text within the box
-        } else {
-            // Default to center
-            this.messageOverlay.style.top = '50%';
-            this.messageOverlay.style.left = '50%';
-            this.messageOverlay.style.transform = 'translate(-50%, -50%)';
-        }
-
-
-        // Set timeout to hide the message
-        this.messageTimeout = setTimeout(() => {
-            if (this.messageOverlay) {
-                this.messageOverlay.style.display = 'none';
-            }
             this.messageTimeout = null;
-        }, duration) as any; // Use 'any' to satisfy setTimeout return type
+        }
     }
+
 
     private populateSceneSelector(): void {
         if (!this.sceneManager || !this.debugOverlay) return;

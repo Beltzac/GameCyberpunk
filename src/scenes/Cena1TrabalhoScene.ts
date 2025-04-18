@@ -47,6 +47,10 @@ export class Cena1TrabalhoScene extends Scene {
         try {
             console.log("Cena1TrabalhoScene initializing...");
 
+            // Load the custom font for UI messages
+            await this.gameEngine.uiManager.loadFont('/assets/fonts/Thata_Regular.json');
+
+
             // Load sounds
             await this.gameEngine.soundManager.loadSound(
                 'city_ambient',
@@ -135,6 +139,9 @@ export class Cena1TrabalhoScene extends Scene {
     }
 
     async onEnter(): Promise<void> {
+        // Set the current scene in the UIManager for 3D text rendering
+        this.gameEngine.uiManager.setCurrentScene(this.threeScene);
+
         // Play ambient sounds
         await this.gameEngine.soundManager.playBackground('city_ambient', 3.0);
         await this.gameEngine.soundManager.playBackground('ac_ambient', 3.0);
@@ -204,13 +211,22 @@ export class Cena1TrabalhoScene extends Scene {
             console.log('Notebook clicked - toggling');
             await this.toggleNotebook();
         } else if (clickedObject.name === "CoffeeMug") {
-            this.gameEngine.uiManager.showMessage("João thinks: 'Another cup...'", 2000, '30%', '70%');
+            const messageMeshCoffee = this.gameEngine.uiManager.showMessage("João thinks: 'Another cup...'", 2000, new THREE.Vector3(2, -0.5, 5)); // Example 3D position
+            if (messageMeshCoffee) {
+                this.threeScene.add(messageMeshCoffee);
+            }
             // Add more complex interaction here later if needed
         } else if (clickedObject.name === "Pen") {
-            this.gameEngine.uiManager.showMessage("João doodles absently on a notepad.", 2000, '80%', '20%');
+            const messageMeshPen = this.gameEngine.uiManager.showMessage("João doodles absently on a notepad.", 2000, new THREE.Vector3(-1, -2, 5)); // Example 3D position
+            if (messageMeshPen) {
+                this.threeScene.add(messageMeshPen);
+            }
             // Add more complex interaction here later if needed
         } else if (clickedObject.name === "Papers") {
-            this.gameEngine.uiManager.showMessage("João sighs at the endless stack of papers.", 2000, '40%', '80%');
+            const messageMeshPapers = this.gameEngine.uiManager.showMessage("João sighs at the endless stack of papers.", 2000, new THREE.Vector3(3, -1, 5)); // Example 3D position
+            if (messageMeshPapers) {
+                this.threeScene.add(messageMeshPapers);
+            }
             // Add more complex interaction here later if needed
         }
     }
