@@ -119,6 +119,31 @@ export class UIManager {
         this.fpsCounter.style.fontWeight = 'bold';
         fpsLabel.appendChild(this.fpsCounter);
 
+        // Performance Metrics Section
+        const updateTimeLabel = document.createElement('label');
+        updateTimeLabel.textContent = 'Update Time: ';
+        updateTimeLabel.style.display = 'block';
+        updateTimeLabel.style.marginTop = '10px';
+        this.debugOverlay.appendChild(updateTimeLabel);
+
+        const updateTimeValue = document.createElement('span');
+        updateTimeValue.id = 'debug-update-time-value';
+        updateTimeValue.textContent = 'N/A';
+        updateTimeValue.style.fontWeight = 'bold';
+        updateTimeLabel.appendChild(updateTimeValue);
+
+        const objectCountLabel = document.createElement('label');
+        objectCountLabel.textContent = 'Object Count: ';
+        objectCountLabel.style.display = 'block';
+        objectCountLabel.style.marginTop = '10px';
+        this.debugOverlay.appendChild(objectCountLabel);
+
+        const objectCountValue = document.createElement('span');
+        objectCountValue.id = 'debug-object-count-value';
+        objectCountValue.textContent = 'N/A';
+        objectCountValue.style.fontWeight = 'bold';
+        objectCountLabel.appendChild(objectCountValue);
+
         document.body.appendChild(this.debugOverlay);
         console.log("Debug overlay created.");
     }
@@ -202,40 +227,52 @@ export class UIManager {
     }
 
     // Methods for updating UI, showing/hiding elements, etc.
-    public update(): void {
+    public update(deltaTime: number, updateTime: number, objectCount: number): void {
         this.updateFPSCounter();
+        this.updatePerformanceMetrics(updateTime, objectCount);
+    }
+private updatePerformanceMetrics(updateTime: number, objectCount: number): void {
+    const updateTimeElement = this.debugOverlay?.querySelector<HTMLSpanElement>('#debug-update-time-value');
+    if (updateTimeElement) {
+        updateTimeElement.textContent = `${updateTime.toFixed(2)} ms`;
     }
 
-    private updateFPSCounter(): void {
-        if (!this.fpsCounter) return;
-
-        const currentTime = performance.now();
-        const deltaTime = currentTime - this.lastFrameTime;
-
-        if (deltaTime >= 1000) {
-            this.fpsCounter.textContent = this.frameCount.toString();
-            this.frameCount = 0;
-            this.lastFrameTime = currentTime;
-        } else {
-            this.frameCount++;
-        }
+    const objectCountElement = this.debugOverlay?.querySelector<HTMLSpanElement>('#debug-object-count-value');
+    if (objectCountElement) {
+        objectCountElement.textContent = objectCount.toString();
     }
+}
 
-    public showScreen(screenId: string): void {
-        console.log(`UIManager: Showing screen ${screenId} (placeholder)`);
-        // Placeholder for other UI screens
-    }
+private updateFPSCounter(): void {
+    if (!this.fpsCounter) return;
 
-    public hideScreen(screenId: string): void {
-        console.log(`UIManager: Hiding screen ${screenId} (placeholder)`);
-        // Placeholder for other UI screens
-    }
+    const currentTime = performance.now();
+    const deltaTime = currentTime - this.lastFrameTime;
 
-    private toggleSound(): void {
-        const soundToggle = this.debugOverlay?.querySelector<HTMLInputElement>('#debug-sound-toggle');
-        if (soundToggle && this.soundManager) {
-            this.soundManager.muteAll(soundToggle.checked);
-            console.log(`Sound ${soundToggle.checked ? 'muted' : 'unmuted'}`);
-        }
+    if (deltaTime >= 1000) {
+        this.fpsCounter.textContent = this.frameCount.toString();
+        this.frameCount = 0;
+        this.lastFrameTime = currentTime;
+    } else {
+        this.frameCount++;
     }
+}
+
+public showScreen(screenId: string): void {
+    console.log(`UIManager: Showing screen ${screenId} (placeholder)`);
+    // Placeholder for other UI screens
+}
+
+public hideScreen(screenId: string): void {
+    console.log(`UIManager: Hiding screen ${screenId} (placeholder)`);
+    // Placeholder for other UI screens
+}
+
+private toggleSound(): void {
+    const soundToggle = this.debugOverlay?.querySelector<HTMLInputElement>('#debug-sound-toggle');
+    if (soundToggle && this.soundManager) {
+        this.soundManager.muteAll(soundToggle.checked);
+        console.log(`Sound ${soundToggle.checked ? 'muted' : 'unmuted'}`);
+    }
+}
 }

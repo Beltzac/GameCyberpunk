@@ -124,16 +124,31 @@ export class GameEngine {
             const currentScene = this.sceneManager.currentScene;
 
             if (currentScene) {
-                // 1. Update game logic
+                // Measure update time
+                const updateStartTime = performance.now();
                 currentScene.update(deltaTime);
+                const updateEndTime = performance.now();
+                const updateTime = updateEndTime - updateStartTime;
+
+                // Get object count
+                let objectCount = 0;
+                currentScene.threeScene.traverse(() => {
+                    objectCount++;
+                });
+
                 // 2. Update InputManager (handles cursor position and click animations)
                 this.inputManager.update(deltaTime);
-                this.uiManager.update(); // Update UI Manager (though currently minimal)
+
+                // Update UI Manager with performance metrics
+                this.uiManager.update(deltaTime, updateTime, objectCount);
+
                 // 3. Render the scene
                 this.renderer.render(currentScene.threeScene, this.camera);
             } else {
                 // Optionally clear the screen if no scene is active
                 this.renderer.clear();
+                // Still update UI Manager even if no scene, maybe show a loading state or similar
+                this.uiManager.update(deltaTime, 0, 0);
             }
         }, TARGET_FPS);
 
