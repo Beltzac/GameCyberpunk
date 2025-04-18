@@ -139,8 +139,11 @@ export class GameEngine {
                 // 2. Update InputManager (handles cursor position and click animations)
                 this.inputManager.update(deltaTime);
 
+                // Get scene-specific performance data
+                const scenePerformanceData = currentScene.getPerformanceData();
+
                 // Update UI Manager with performance metrics
-                this.uiManager.update(deltaTime, updateTime, objectCount);
+                this.uiManager.update(deltaTime, updateTime, objectCount, scenePerformanceData);
 
                 // 3. Render the scene
                 this.renderer.render(currentScene.threeScene, this.camera);
@@ -148,7 +151,7 @@ export class GameEngine {
                 // Optionally clear the screen if no scene is active
                 this.renderer.clear();
                 // Still update UI Manager even if no scene, maybe show a loading state or similar
-                this.uiManager.update(deltaTime, 0, 0);
+                this.uiManager.update(deltaTime, 0, 0, {}); // Pass empty object for performance data
             }
         }, TARGET_FPS);
 

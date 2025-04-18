@@ -21,6 +21,7 @@ export class StartMenuScene extends Scene {
     private sparkMaterials: THREE.PointsMaterial[] = []; // Initialize in init after generating textures
     private sparkVelocities: Float32Array | null = null;
     private sparkTypes: Float32Array | null = null; // Keep if needed for type-specific logic later
+    private performanceData: { [key: string]: number } = {};
 
     constructor(gameEngine: GameEngine, assetLoader: AssetLoader, sceneManager: SceneManager) {
         super(gameEngine);
@@ -206,7 +207,10 @@ export class StartMenuScene extends Scene {
     }
 
     update(deltaTime: number): void {
+        this.performanceData = {}; // Clear previous frame's data
+
         // Update particles
+        const particleUpdateTime = performance.now();
         if (this.sparkVelocities && this.sparks.length > 0) {
             const particlesPerType = 200;
 
@@ -245,6 +249,7 @@ export class StartMenuScene extends Scene {
                 geometry.attributes.position.needsUpdate = true;
             }
         }
+        this.performanceData['Particle Update'] = performance.now() - particleUpdateTime;
     }
 
     render(renderer: THREE.WebGLRenderer): void {
@@ -386,5 +391,8 @@ export class StartMenuScene extends Scene {
         const texture = new THREE.CanvasTexture(canvas);
         texture.needsUpdate = true;
         return texture;
+    }
+    getPerformanceData(): { [key: string]: number } {
+        return this.performanceData;
     }
 } // End of StartMenuScene class

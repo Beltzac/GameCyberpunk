@@ -16,6 +16,7 @@ export class Cena1TrabalhoScene extends Scene {
     private notebookClosedTexture: THREE.Texture | null = null;
     private isNotebookOpen: boolean = true;
     private dustMotesEffect: DustMotesEffect | null = null;
+    private performanceData: { [key: string]: number } = {};
 
     // Static Light Properties (Animation Removed)
     private cyanLight: THREE.PointLight | null = null;
@@ -107,9 +108,14 @@ export class Cena1TrabalhoScene extends Scene {
     }
 
     update(deltaTime: number): void {
+        this.performanceData = {}; // Clear previous frame's data
+
+        // Update dust motes effect
+        const dustMotesStartTime = performance.now();
         if (this.dustMotesEffect) {
             this.dustMotesEffect.update(deltaTime);
         }
+        this.performanceData['Dust Motes Effect'] = performance.now() - dustMotesStartTime;
     }
 
     render(renderer: THREE.WebGLRenderer): void {
@@ -156,5 +162,8 @@ export class Cena1TrabalhoScene extends Scene {
             console.log('Notebook clicked - toggling');
             await this.toggleNotebook();
         }
+    }
+    getPerformanceData(): { [key: string]: number } {
+        return this.performanceData;
     }
 }

@@ -144,6 +144,20 @@ export class UIManager {
         objectCountValue.style.fontWeight = 'bold';
         objectCountLabel.appendChild(objectCountValue);
 
+        // Scene Performance Metrics Section
+        const scenePerformanceLabel = document.createElement('h4');
+        scenePerformanceLabel.textContent = 'Scene Object Update Times (ms):';
+        scenePerformanceLabel.style.marginTop = '15px';
+        scenePerformanceLabel.style.marginBottom = '5px';
+        this.debugOverlay.appendChild(scenePerformanceLabel);
+
+        const scenePerformanceList = document.createElement('ul');
+        scenePerformanceList.id = 'debug-scene-performance-list';
+        scenePerformanceList.style.listStyle = 'none';
+        scenePerformanceList.style.padding = '0';
+        this.debugOverlay.appendChild(scenePerformanceList);
+
+
         document.body.appendChild(this.debugOverlay);
         console.log("Debug overlay created.");
     }
@@ -227,21 +241,40 @@ export class UIManager {
     }
 
     // Methods for updating UI, showing/hiding elements, etc.
-    public update(deltaTime: number, updateTime: number, objectCount: number): void {
+    public update(deltaTime: number, updateTime: number, objectCount: number, scenePerformanceData: { [key: string]: number }): void {
         this.updateFPSCounter();
         this.updatePerformanceMetrics(updateTime, objectCount);
-    }
-private updatePerformanceMetrics(updateTime: number, objectCount: number): void {
-    const updateTimeElement = this.debugOverlay?.querySelector<HTMLSpanElement>('#debug-update-time-value');
-    if (updateTimeElement) {
-        updateTimeElement.textContent = `${updateTime.toFixed(2)} ms`;
+        this.updateScenePerformanceMetrics(scenePerformanceData);
     }
 
-    const objectCountElement = this.debugOverlay?.querySelector<HTMLSpanElement>('#debug-object-count-value');
-    if (objectCountElement) {
-        objectCountElement.textContent = objectCount.toString();
+    private updatePerformanceMetrics(updateTime: number, objectCount: number): void {
+        const updateTimeElement = this.debugOverlay?.querySelector<HTMLSpanElement>('#debug-update-time-value');
+        if (updateTimeElement) {
+            updateTimeElement.textContent = `${updateTime.toFixed(2)} ms`;
+        }
+
+        const objectCountElement = this.debugOverlay?.querySelector<HTMLSpanElement>('#debug-object-count-value');
+        if (objectCountElement) {
+            objectCountElement.textContent = objectCount.toString();
+        }
     }
-}
+
+    private updateScenePerformanceMetrics(performanceData: { [key: string]: number }): void {
+        const performanceList = this.debugOverlay?.querySelector<HTMLUListElement>('#debug-scene-performance-list');
+        if (!performanceList) return;
+
+        // Clear previous list items
+        performanceList.innerHTML = '';
+
+        // Add new list items for each performance metric
+        for (const key in performanceData) {
+            if (Object.prototype.hasOwnProperty.call(performanceData, key)) {
+                const listItem = document.createElement('li');
+                listItem.textContent = `${key}: ${performanceData[key].toFixed(2)} ms`;
+                performanceList.appendChild(listItem);
+            }
+        }
+    }
 
 private updateFPSCounter(): void {
     if (!this.fpsCounter) return;

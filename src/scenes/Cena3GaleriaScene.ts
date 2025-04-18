@@ -33,6 +33,7 @@ export class Cena3GaleriaScene extends Scene {
     private readonly tiltImpulse: number = 4;
     private readonly tiltSpringFactor: number = 0.3;
     private readonly tiltDampingFactor: number = 0.95;
+    private performanceData: { [key: string]: number } = {};
 
     constructor(gameEngine: GameEngine, assetLoader: AssetLoader, sceneManager: SceneManager) {
         super(gameEngine);
@@ -186,37 +187,54 @@ export class Cena3GaleriaScene extends Scene {
     }
 
     update(deltaTime: number): void {
+        this.performanceData = {}; // Clear previous frame's data
+
         // Animate character sprites
+        const charSpriteStartTime = performance.now();
         this.characterSprites.forEach((sprite, index) => {
             const offset = index * Math.PI * 0.5;
             const bob = Math.sin(Date.now() * 0.001 + offset) * 0.05;
             sprite.position.y += bob;
         });
+        this.performanceData['Character Sprites'] = performance.now() - charSpriteStartTime;
+
 
         // Update characters
         if (this.bobCharacter) {
+            const bobStartTime = performance.now();
             this.bobCharacter.update(deltaTime);
+            this.performanceData['Bob Character'] = performance.now() - bobStartTime;
         }
         if (this.martaCharacter) {
+            const martaStartTime = performance.now();
             this.martaCharacter.update(deltaTime);
+            this.performanceData['Marta Character'] = performance.now() - martaStartTime;
         }
 
         // Update decision buttons
+        const buttonStartTime = performance.now();
         this.decisionButtons.forEach((button, index) => {
             const material = button.material as THREE.SpriteMaterial;
             material.opacity = this.currentSelection === index ? 1 : 0.7;
             material.needsUpdate = true;
         });
+        this.performanceData['Decision Buttons'] = performance.now() - buttonStartTime;
+
 
         // Update shaders
+        const shaderStartTime = performance.now();
         HologramHelper.updateShaderTime(this.plantaPack);
         HologramHelper.updateShaderTime(this.mesaPack);
         HologramHelper.updateShaderTime(this.vitrolaPack);
+        this.performanceData['Hologram Shaders'] = performance.now() - shaderStartTime;
+
 
         // Physics updates for all models
+        const physicsStartTime = performance.now();
         this.updateModelPhysics(this.plantaPack, deltaTime, this.currentRotationVelocityXPlanta, this.currentRotationVelocityYPlanta);
         this.updateModelPhysics(this.mesaPack, deltaTime, this.currentRotationVelocityXMesa, this.currentRotationVelocityYMesa);
         this.updateModelPhysics(this.vitrolaPack, deltaTime, this.currentRotationVelocityXVitrola, this.currentRotationVelocityYVitrola);
+        this.performanceData['Model Physics'] = performance.now() - physicsStartTime;
     }
 
     private updateModelPhysics(
@@ -294,5 +312,8 @@ export class Cena3GaleriaScene extends Scene {
                 1000
             );
         }
+    }
+    getPerformanceData(): { [key: string]: number } {
+        return this.performanceData;
     }
 }

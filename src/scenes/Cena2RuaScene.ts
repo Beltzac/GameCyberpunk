@@ -56,6 +56,7 @@ export class Cena2RuaScene extends Scene {
     // <<< END ADDED >>>
     private phoneBackgroundPlane: THREE.Mesh | null = null; // Reference to the gray background
     private postClippingPlanes: THREE.Plane[] = []; // Planes for masking posts
+    private performanceData: { [key: string]: number } = {};
 
 
     constructor(gameEngine: GameEngine, assetLoader: AssetLoader, sceneManager: SceneManager) { // Removed camera parameter
@@ -163,11 +164,18 @@ export class Cena2RuaScene extends Scene {
     }
 
     update(deltaTime: number): void {
+        this.performanceData = {}; // Clear previous frame's data
+
+        // Update rain effect
+        const rainStartTime = performance.now();
         if (this.rainEffect) {
             this.rainEffect.update(deltaTime);
         }
+        this.performanceData['Rain Effect'] = performance.now() - rainStartTime;
 
-        // Animate hand bobbing
+
+        // Animate hand bobbing and handle animation states
+        const handPhoneAnimStartTime = performance.now();
         if (this.handSprite) {
             this.timeAccumulator += deltaTime;
             this.buttonTimeAccumulator += deltaTime * this.buttonAnimationSpeed;
@@ -200,7 +208,7 @@ export class Cena2RuaScene extends Scene {
                 const currentY = -5 + Easing.easeOutQuad(progress) * 5;
                 this.phoneSprite.position.y = currentY;
 
-                // <<< MODIFIED: Update background AND post container positions >>>
+                // Update background AND post container positions
                 if (this.phoneBackgroundPlane) {
                     this.phoneBackgroundPlane.position.y = currentY;
                 }
@@ -208,7 +216,7 @@ export class Cena2RuaScene extends Scene {
                     this.postContainer.position.y = currentY; // Keep container Y synced
                 }
 
-                // <<< ADDED: Manually update clipping plane constants >>>
+                // Manually update clipping plane constants
                 if (this.postClippingPlanes.length === 4 && this.phoneBackgroundPlane) {
                     const halfHeight = (this.phoneBackgroundPlane.geometry as THREE.PlaneGeometry).parameters.height / 2;
                     // Corrected constant calculations:
@@ -216,8 +224,6 @@ export class Cena2RuaScene extends Scene {
                     this.postClippingPlanes[1].constant = -currentY + halfHeight; // Bottom edge
                     // Left/Right constants (indices 2 and 3) remain unchanged if X position is static
                 }
-                // <<< END ADDED >>>
-                // <<< END ADDED >>>
 
                 if (progress >= 1) {
                     // --- Step 1: Set Final Animated Positions ---
@@ -258,54 +264,60 @@ export class Cena2RuaScene extends Scene {
                 const bobProgress = Easing.easeInOutSine(Math.sin(this.timeAccumulator * 5) * 0.5 + 0.5);
                 this.handSprite.position.y = -1.5 + bobProgress * 0.2 - 0.1;
             }
-
-            // Animate and manage thought button visibility
-            const shouldShowButtons = this.animationState === 'phoneIdle' && this.postScrollCount >= 3;
-
-            for (let i = 0; i < this.thoughtButtons.length; i++) {
-                this.buttonOffsets[i] = this.buttonOffsets[i] || Math.random() * Math.PI * 2;
-                const button = this.thoughtButtons[i];
-                const offset = this.buttonOffsets[i];
-
-                // Animate left button to left side, right button to right side
-                button.position.x = (i === 0 ? -5 : 5) + Math.sin(this.timeAccumulator * 2 + offset) * 0.2;
-                button.position.y = 0 + Math.cos(this.timeAccumulator * 3 + offset) * 0.1;
-
-                // Fade in/out based on conditions
-                const targetOpacity = shouldShowButtons ? 1 : 0;
-                if (button.material instanceof THREE.SpriteMaterial) {
-                    button.material.opacity = THREE.MathUtils.lerp(
-                        button.material.opacity,
-                        targetOpacity,
-                        0.1
-                    );
-                    button.visible = button.material.opacity > 0.01;
-                }
-            }
-
-            // <<< ADDED: Handle post scrolling animation >>>
-            if (this.isScrollingPosts && this.postContainer) {
-                const elapsed = this.timeAccumulator - this.scrollStartTime;
-                const progress = Math.min(elapsed / this.scrollDuration, 1);
-                const easedProgress = Easing.easeInOutQuad(progress); // Use easing
-
-                this.postContainer.position.y = this.scrollStartY + (this.scrollTargetY - this.scrollStartY) * easedProgress;
-
-                if (progress >= 1) {
-                    this.postContainer.position.y = this.scrollTargetY; // Ensure final position
-                    this.isScrollingPosts = false;
-                    // Keep container at final scroll position for next scroll
-                    this.scrollStartTime = this.timeAccumulator;
-                    console.log(`update: scroll complete. currentPostIndex=${this.currentPostIndex}, isScrollingPosts=${this.isScrollingPosts}`);
-                    // Reset scroll state to allow new scrolls
-                    if (this.postContainer) {
-                        this.scrollStartY = this.postContainer.position.y;
-                    }
-                    console.log(`Scrolled to post ${this.currentPostIndex + 1}`);
-                }
-            }
-            // <<< END ADDED >>>
         }
+        this.performanceData['Hand/Phone Animation'] = performance.now() - handPhoneAnimStartTime;
+
+
+        // Animate and manage thought button visibility
+        const buttonAnimStartTime = performance.now();
+        const shouldShowButtons = this.animationState === 'phoneIdle' && this.postScrollCount >= 3;
+
+        for (let i = 0; i < this.thoughtButtons.length; i++) {
+            this.buttonOffsets[i] = this.buttonOffsets[i] || Math.random() * Math.PI * 2;
+            const button = this.thoughtButtons[i];
+            const offset = this.buttonOffsets[i];
+
+            // Animate left button to left side, right button to right side
+            button.position.x = (i === 0 ? -5 : 5) + Math.sin(this.timeAccumulator * 2 + offset) * 0.2;
+            button.position.y = 0 + Math.cos(this.timeAccumulator * 3 + offset) * 0.1;
+
+            // Fade in/out based on conditions
+            const targetOpacity = shouldShowButtons ? 1 : 0;
+            if (button.material instanceof THREE.SpriteMaterial) {
+                button.material.opacity = THREE.MathUtils.lerp(
+                    button.material.opacity,
+                    targetOpacity,
+                    0.1
+                );
+                button.visible = button.material.opacity > 0.01;
+            }
+        }
+        this.performanceData['Thought Button Animation'] = performance.now() - buttonAnimStartTime;
+
+
+        // Handle post scrolling animation
+        const postScrollStartTime = performance.now();
+        if (this.isScrollingPosts && this.postContainer) {
+            const elapsed = this.timeAccumulator - this.scrollStartTime;
+            const progress = Math.min(elapsed / this.scrollDuration, 1);
+            const easedProgress = Easing.easeInOutQuad(progress); // Use easing
+
+            this.postContainer.position.y = this.scrollStartY + (this.scrollTargetY - this.scrollStartY) * easedProgress;
+
+            if (progress >= 1) {
+                this.postContainer.position.y = this.scrollTargetY; // Ensure final position
+                this.isScrollingPosts = false;
+                // Keep container at final scroll position for next scroll
+                this.scrollStartTime = this.timeAccumulator;
+                console.log(`update: scroll complete. currentPostIndex=${this.currentPostIndex}, isScrollingPosts=${this.isScrollingPosts}`);
+                // Reset scroll state to allow new scrolls
+                if (this.postContainer) {
+                    this.scrollStartY = this.postContainer.position.y;
+                }
+                console.log(`Scrolled to post ${this.currentPostIndex + 1}`);
+            }
+        }
+        this.performanceData['Post Scrolling Animation'] = performance.now() - postScrollStartTime;
     }
 
     render(renderer: THREE.WebGLRenderer): void {
@@ -336,7 +348,7 @@ export class Cena2RuaScene extends Scene {
                 this.threeScene.add(this.phoneSprite);
 
 
-                // <<< MODIFIED: Create a background plane for the phone screen area >>>
+                // Create a background plane for the phone screen area
                 // Calculate the visual size of the screen area based on post scaling
                 const screenWidth = phoneScaleX * 0.53; // Match postScaleX calculation base (paddingFactor = 0.5)
                 const screenHeight = phoneScaleY * 0.56; // Adjust height slightly if needed, or derive from aspect ratio/padding
@@ -348,7 +360,7 @@ export class Cena2RuaScene extends Scene {
                 this.phoneBackgroundPlane.position.set(this.phoneSprite.position.x, this.phoneSprite.position.y, 0.18);
                 this.phoneBackgroundPlane.visible = false; // Start invisible
                 this.threeScene.add(this.phoneBackgroundPlane);
-                // <<< ADDED: Define Clipping Planes based on background plane geometry >>>
+                // Define Clipping Planes based on background plane geometry
                 const halfWidth = screenWidth / 2;
                 const halfHeight = screenHeight / 2;
                 // Define initial clipping planes based on initial Y position (-5)
@@ -359,8 +371,7 @@ export class Cena2RuaScene extends Scene {
                     new THREE.Plane(new THREE.Vector3(-1, 0, 0), halfWidth), // Right edge constant
                     new THREE.Plane(new THREE.Vector3(1, 0, 0), halfWidth)   // Left edge constant
                 ];
-                // <<< END ADDED >>>
-                // <<< MODIFIED: Create post container and stack posts vertically >>>
+                // Create post container and stack posts vertically
                 this.postContainer = new THREE.Group();
                 // Set initial WORLD position to match the phone's starting position BEFORE adding to scene
                 if (this.phoneSprite) {
@@ -393,7 +404,7 @@ export class Cena2RuaScene extends Scene {
                         // transparent: true, // Temporarily disable for testing clipping
                         opacity: 1,
                         depthTest: true,
-                        depthWrite: false, // <<< ADD: Prevent writing to depth buffer >>>
+                        depthWrite: false, // Prevent writing to depth buffer
 
                         // Clipping plane configuration
                         clippingPlanes: this.postClippingPlanes,
@@ -421,7 +432,6 @@ export class Cena2RuaScene extends Scene {
                 this.currentPostIndex = 0; // Start at the first post
                 this.targetPostIndex = 0;
                 // this.postContainer.position.y = 0; // REMOVED - Initial local position is (0,0,0.01). Centering happens after animation.
-                // <<< END MODIFIED >>>
             }
         } else if (clickedObject.name == "ThoughtButton1") {
             if (this.sceneManager) {
@@ -433,7 +443,7 @@ export class Cena2RuaScene extends Scene {
                 await this.sceneManager.changeScene('cena3_galeria', 'glitch', 1000);
             }
         }
-        // <<< MODIFIED: Handle clicks on the phone OR the post to INITIATE SCROLL >>>
+        // Handle clicks on the phone OR the post to INITIATE SCROLL
         else if ((clickedObject === this.phoneSprite || clickedObject.name.startsWith("Post")) && this.animationState === 'phoneIdle' && !this.isScrollingPosts) {
             console.log("Phone or Post clicked - starting scroll");
             if (this.postContainer) {
@@ -483,7 +493,9 @@ export class Cena2RuaScene extends Scene {
                 this.scrollStartTime = this.timeAccumulator;
             }
         }
-        // <<< END MODIFIED >>>
     }
 
+    getPerformanceData(): { [key: string]: number } {
+        return this.performanceData;
+    }
 }
