@@ -18,6 +18,15 @@ export class Cena1TrabalhoScene extends Scene {
     private dustMotesEffect: DustMotesEffect | null = null;
     private performanceData: { [key: string]: number } = {};
 
+    // New interactable objects
+    private coffeeMugSprite: THREE.Sprite | null = null;
+    private penSprite: THREE.Sprite | null = null;
+    private papersSprite: THREE.Sprite | null = null;
+
+    private coffeeMugTexture: THREE.Texture | null = null;
+    private penTexture: THREE.Texture | null = null;
+    private papersTexture: THREE.Texture | null = null;
+
     // Static Light Properties (Animation Removed)
     private cyanLight: THREE.PointLight | null = null;
     private magentaLight: THREE.PointLight | null = null;
@@ -71,6 +80,11 @@ export class Cena1TrabalhoScene extends Scene {
             console.log('Loading notebook closed texture...');
             this.notebookClosedTexture = await this.assetLoader.loadTexture('cena_1_trabalho/notebook_fechado.png');
 
+            // Load textures for new interactables
+            this.coffeeMugTexture = await this.assetLoader.loadTexture('assets/cena_1_trabalho/coffee_mug.png');
+            this.penTexture = await this.assetLoader.loadTexture('assets/cena_1_trabalho/pen.png');
+            this.papersTexture = await this.assetLoader.loadTexture('assets/cena_1_trabalho/papers.png');
+
             // Create background sprite using base class method
             this.backgroundSprite = this.createBackground(backgroundTexture);
 
@@ -81,6 +95,34 @@ export class Cena1TrabalhoScene extends Scene {
             this.notebookSprite.position.set(1, -1.5, 0.1);
             this.notebookSprite.name = "Notebook";
             this.threeScene.add(this.notebookSprite);
+
+            // Create new interactable sprites
+            if (this.coffeeMugTexture) {
+                const material = new THREE.SpriteMaterial({ map: this.coffeeMugTexture, transparent: true });
+                this.coffeeMugSprite = new THREE.Sprite(material);
+                this.coffeeMugSprite.scale.set(1, 1, 1);
+                this.coffeeMugSprite.position.set(-2, -1, 0.1); // Example position
+                this.coffeeMugSprite.name = "CoffeeMug";
+                this.threeScene.add(this.coffeeMugSprite);
+            }
+
+            if (this.penTexture) {
+                const material = new THREE.SpriteMaterial({ map: this.penTexture, transparent: true });
+                this.penSprite = new THREE.Sprite(material);
+                this.penSprite.scale.set(1, 1, 1);
+                this.penSprite.position.set(-2.5, -3.2, 0.1); // Example position
+                this.penSprite.name = "Pen";
+                this.threeScene.add(this.penSprite);
+            }
+
+            if (this.papersTexture) {
+                const material = new THREE.SpriteMaterial({ map: this.papersTexture, transparent: true });
+                this.papersSprite = new THREE.Sprite(material);
+                this.papersSprite.scale.set(2, 1.5, 1);
+                this.papersSprite.position.set(4, -1.8, 0.1); // Example position
+                this.papersSprite.name = "Papers";
+                this.threeScene.add(this.papersSprite);
+            }
 
             // Setup effects
             this.setupDustMotes();
@@ -161,6 +203,15 @@ export class Cena1TrabalhoScene extends Scene {
         if (clickedObject.name === "Notebook") {
             console.log('Notebook clicked - toggling');
             await this.toggleNotebook();
+        } else if (clickedObject.name === "CoffeeMug") {
+            this.gameEngine.uiManager.showMessage("João thinks: 'Another cup...'", 2000, '30%', '70%');
+            // Add more complex interaction here later if needed
+        } else if (clickedObject.name === "Pen") {
+            this.gameEngine.uiManager.showMessage("João doodles absently on a notepad.", 2000, '80%', '20%');
+            // Add more complex interaction here later if needed
+        } else if (clickedObject.name === "Papers") {
+            this.gameEngine.uiManager.showMessage("João sighs at the endless stack of papers.", 2000, '40%', '80%');
+            // Add more complex interaction here later if needed
         }
     }
     getPerformanceData(): { [key: string]: number } {

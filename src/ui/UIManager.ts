@@ -159,7 +159,81 @@ export class UIManager {
 
 
         document.body.appendChild(this.debugOverlay);
+        this.createMessageOverlay(); // Create the message overlay
         console.log("Debug overlay created.");
+    }
+
+    private messageOverlay: HTMLElement | null = null;
+    private messageTimeout: number | null = null;
+
+    private createMessageOverlay(): void {
+        // Load custom font
+        const style = document.createElement('style');
+        style.innerHTML = `
+            @font-face {
+                font-family: 'Thata-Regular';
+                src: url('src/assets/fonts/Thata-Regular-2024-08-15.ttf') format('truetype');
+                font-weight: normal;
+                font-style: normal;
+            }
+        `;
+        document.head.appendChild(style);
+
+        this.messageOverlay = document.createElement('div');
+        this.messageOverlay.id = 'message-overlay';
+        this.messageOverlay.style.position = 'absolute';
+        this.messageOverlay.style.top = '50%';
+        this.messageOverlay.style.left = '50%';
+        this.messageOverlay.style.transform = 'translate(-50%, -50%)';
+        this.messageOverlay.style.backgroundColor = 'rgba(70, 130, 180, 0.8)'; // SteelBlue with transparency
+        this.messageOverlay.style.color = '#00ffff'; // Cyan
+        this.messageOverlay.style.padding = '25px'; // Slightly more padding
+        this.messageOverlay.style.border = '2px solid #00ffff'; // Cyan border
+        this.messageOverlay.style.boxShadow = '0 0 10px #00ffff'; // Cyan glow
+        this.messageOverlay.style.borderRadius = '5px'; // Sharper corners
+        this.messageOverlay.style.fontFamily = 'Thata-Regular, sans-serif'; // Use custom font
+        this.messageOverlay.style.fontSize = '28px'; // Slightly larger font
+        this.messageOverlay.style.textAlign = 'center';
+        this.messageOverlay.style.zIndex = '1000'; // Below debug overlay
+        this.messageOverlay.style.display = 'none'; // Start hidden
+        this.messageOverlay.style.pointerEvents = 'none'; // Don't block clicks
+        this.messageOverlay.style.textShadow = '0 0 5px #00ffff'; // Text glow
+
+        document.body.appendChild(this.messageOverlay);
+        console.log("Message overlay created.");
+    }
+
+    public showMessage(message: string, duration: number = 2000, top?: string, left?: string): void {
+        if (!this.messageOverlay) return;
+
+        // Clear any existing timeout
+        if (this.messageTimeout !== null) {
+            clearTimeout(this.messageTimeout);
+        }
+
+        this.messageOverlay.textContent = message;
+        this.messageOverlay.style.display = 'block';
+
+        // Set position based on parameters or use default center
+        if (top !== undefined && left !== undefined) {
+            this.messageOverlay.style.top = top;
+            this.messageOverlay.style.left = left;
+            this.messageOverlay.style.transform = 'translate(-50%, -50%)'; // Still center the text within the box
+        } else {
+            // Default to center
+            this.messageOverlay.style.top = '50%';
+            this.messageOverlay.style.left = '50%';
+            this.messageOverlay.style.transform = 'translate(-50%, -50%)';
+        }
+
+
+        // Set timeout to hide the message
+        this.messageTimeout = setTimeout(() => {
+            if (this.messageOverlay) {
+                this.messageOverlay.style.display = 'none';
+            }
+            this.messageTimeout = null;
+        }, duration) as any; // Use 'any' to satisfy setTimeout return type
     }
 
     private populateSceneSelector(): void {
