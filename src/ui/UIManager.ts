@@ -263,14 +263,14 @@ export class UIManager {
                 void main() {
                     vec2 uv = vUv;
                     vec4 baseColor = texture2D(tDiffuse, uv);
-                    if (baseColor.a == 0.0) { discard; } // Skip transparent fragments
 
                     // Time-based distortion
                     float t = time * 2.0;
 
-                    // Screen tearing effect
+                    // Screen tearing effect - apply to all pixels
                     if (random(vec2(t, uv.y)) > 0.99) {
                         uv.x += random(vec2(t, uv.y)) * 0.2 * tearIntensity;
+                        baseColor = texture2D(tDiffuse, uv);
                     }
 
                     // Get base color with distortion
