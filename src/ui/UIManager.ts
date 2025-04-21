@@ -35,7 +35,7 @@ export class UIManager {
 
         // Noise: Digital static/glitch effect (0.0-1.0)
         // Currently disabled (commented out in shader code)
-        noise: 0.0,
+        noise: 0.7,
 
         // Highlight: Enhances bright areas with neon glow (0.0-1.0)
         // Detects bright pixels (r+g+b > 1.5) and boosts them with colored highlights
@@ -251,7 +251,7 @@ export class UIManager {
               }
             `,
             fragmentShader: `
-     uniform float  time;
+   uniform float  time;
 uniform float  rgbShiftIntensity;
 uniform float  scanLineIntensity;
 uniform float  noiseIntensity;
@@ -265,17 +265,17 @@ varying vec2 vUv;
 /* ---------- helpers ---------- */
 float random(vec2 p){
     vec2 k = vec2(23.14069263277926, 2.665144142690225);
-    return fract(cos(dot(p,k))*12345.6789);
+    return fract(cos(dot(p, k)) * 12345.6789);
 }
 
-float scanLine(float y,float t){
-    return sin(y*800.0 + t*10.0) * 0.1;
+float scanLine(float y, float t){
+    return sin(y * 800.0 + t * 10.0) * 0.1;
 }
 
 vec3 rgbShift(vec2 p, float amount, float t){
-    float rOff = 0.05 * amount * random(vec2(t*0.7, p.y));
-    float gOff = 0.03 * amount * random(vec2(t*0.8, p.y + 0.3));
-    float bOff = 0.04 * amount * random(vec2(t*0.9, p.y + 0.6));
+    float rOff = 0.05 * amount * random(vec2(t * 0.7, p.y));
+    float gOff = 0.03 * amount * random(vec2(t * 0.8, p.y + 0.3));
+    float bOff = 0.04 * amount * random(vec2(t * 0.9, p.y + 0.6));
 
     // clamp each channel UV to [0,1]
     vec2 rp = clamp(p + vec2(rOff, 0.0), 0.0, 1.0);
@@ -301,14 +301,17 @@ void main(){
     // vertical wobble (clamped)
     uv.y = clamp(uv.y + scanLine(uv.y, t) * scanLineIntensity * 0.01, 0.0, 1.0);
 
-    // base colour
+    // base colour with RGB shift
     vec3 color = rgbShift(uv, rgbShiftIntensity, t);
 
-    // digital noise
-    float n = random(uv + mod(t, 1.0)) * noiseIntensity;
-    color += n - noiseIntensity * 0.5;
+    // sample original alpha to gate noise
+    float origA = texture2D(tDiffuse, vUv).a;
 
-    // neon highlight
+    // digital noise only inside opaque parts
+    float n = random(uv + mod(t, 1.0)) * noiseIntensity * origA;
+    color += n - (noiseIntensity * 0.5 * origA);
+
+    // neon highlight bloom
     float h = max(0.0, dot(color, vec3(1.0)) - 1.5);
     color += vec3(
         h * highlightIntensity * 0.5,
@@ -316,11 +319,8 @@ void main(){
         h * highlightIntensity * 0.7
     );
 
-    // preserve original alpha
-    float origA = texture2D(tDiffuse, vUv).a;
-    //gl_FragColor = vec4(color, origA * opacity);
+    // output glitch bleed everywhere, with constant alpha
     gl_FragColor = vec4(color, opacity);
-
 }
 
 
@@ -352,8 +352,8 @@ void main(){
         const textHeight = fontSize * 1.2; // Estimate height with some padding
 
         // Set canvas dimensions (add some padding)
-        const canvasWidth = textWidth + 40;
-        const canvasHeight = textHeight + 20;
+        const canvasWidth = textWidth + 100;
+        const canvasHeight = textHeight + 100;
         canvas.width = canvasWidth;
         canvas.height = canvasHeight;
 
@@ -411,7 +411,7 @@ void main(){
 
             // Set scale based on texture dimensions to maintain aspect ratio
             const aspect = messageTexture.image.width / messageTexture.image.height;
-            const baseHeight = 2; // Base height for the sprite
+            const baseHeight = 4; // Base height for the sprite
             messageSprite.scale.set(baseHeight * aspect, baseHeight, 1);
 
             // Set position - default to a position if none provided
@@ -599,11 +599,12 @@ void main(){
                     const highlightIntensity = this.shaderIntensities.highlight + progress * 1.1;
                     const opacity = 1.0 - progress;
 
-                    // material.uniforms.scanLineIntensity.value = scanIntensity;
-                    // material.uniforms.rgbShiftIntensity.value = rgbShiftIntensity;
-                    // material.uniforms.tearIntensity.value = tearingIntensity;
-                    // material.uniforms.noiseIntensity.value = noiseIntensity;
-                    // material.uniforms.highlightIntensity.value = highlightIntensity;
+                    material.uniforms.scanLineIntensity.value = scanIntensity;
+                    material.uniforms.rgbShiftIntensity.value = rgbShiftIntensity;
+                    material.uniforms.tearIntensity.value = tearingIntensity;
+                    material.uniforms.noiseIntensity.value = noiseIntensity;
+                    material.uniforms.highlightIntensity.value = highlightIntensity;
+
                     material.uniforms.opacity.value = opacity;
                     material.uniforms.time.value += deltaTime / 1000; // Ensure time keeps updating
 
