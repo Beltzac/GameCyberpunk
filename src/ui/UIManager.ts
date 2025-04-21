@@ -20,6 +20,7 @@ export class UIManager {
     private messageTimeout: number | null = null;
     private currentScene: THREE.Scene | null = null; // Reference to the current scene
     private messageFontLoaded: boolean = false; // Flag to track font loading
+    private messageGlitchMaterial: THREE.ShaderMaterial | null = null; // Add this property
 
     constructor() {
         console.log("UIManager initialized");
@@ -28,7 +29,6 @@ export class UIManager {
         this.lastFrameTime = performance.now();
         this.loadMessageFont(); // Start loading the font
     }
-
     // Method to inject SceneManager dependency
     public setSceneManager(sceneManager: SceneManager): void {
         this.sceneManager = sceneManager;
@@ -43,6 +43,10 @@ export class UIManager {
     // Method to set the current Three.js scene
     public setCurrentScene(scene: THREE.Scene): void {
         this.currentScene = scene;
+        // Create glitch material when the scene (and likely renderer) is available
+        if (!this.messageGlitchMaterial) {
+            this.createMessageGlitchMaterial();
+        }
         // If a message is currently displayed, add it to the new scene
         if (this.messageSprite) {
             this.currentScene.add(this.messageSprite);
@@ -196,6 +200,66 @@ export class UIManager {
         }
     }
 
+    // Method to create the glitch shader material for messages
+    private createMessageGlitchMaterial(): void {
+        // Adapt the shader code from SceneManager
+        this.messageGlitchMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                time: { value: 0.0 },
+                intensity: { value: 0.5 }, // Start with a fixed intensity, adjust as needed
+                tDiffuse: { value: null } // Will be set dynamically with messageTexture
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform float time;
+                uniform float intensity;
+                uniform sampler2D tDiffuse;
+                varying vec2 vUv;
+
+                float rand(vec2 co){
+                    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+                }
+
+                void main() {
+                    vec2 uv = vUv;
+                    float glitchTime = mod(time * 0.5 + intensity * 5.0, 2.0);
+                    float displacement = intensity * (rand(vec2(glitchTime)) - 0.5) * 0.1;
+                    float colorShift = intensity * (rand(vec2(glitchTime + 0.1)) - 0.5) * 0.05;
+
+                    // Apply horizontal displacement based on random chance
+                    if (rand(vec2(floor(glitchTime * 10.0))) > 0.85) {
+                        uv.x += displacement;
+                    }
+
+                    vec4 color = texture2D(tDiffuse, uv);
+
+                    // Apply color shift based on random chance
+                    if (rand(vec2(floor(glitchTime * 15.0))) > 0.9) {
+                        color.r = texture2D(tDiffuse, uv + vec2(colorShift, 0.0)).r;
+                        color.g = texture2D(tDiffuse, uv - vec2(colorShift, 0.0)).g;
+                    }
+
+                    // Add noise
+                    float noise = rand(uv + mod(time, 1.0)) * 0.2 * intensity;
+                    color.rgb -= noise;
+
+                    // Apply overall intensity fade (optional, depends on desired effect)
+                    // gl_FragColor = mix(vec4(0.0, 0.0, 0.0, 0.0), vec4(color.rgb, 1.0), intensity);
+                    gl_FragColor = vec4(color.rgb, color.a); // Keep original alpha
+                }
+            `,
+            transparent: true,
+            depthTest: false
+        });
+        console.log("UIManager: Message glitch material created.");
+    }
+
     // Method to create a 2D canvas texture for the message
     private createMessageTexture(message: string): THREE.CanvasTexture {
         // Dispose of previous texture and canvas if they exist
@@ -268,13 +332,22 @@ export class UIManager {
         try {
             const messageTexture = this.createMessageTexture(message);
 
-            const material = new THREE.SpriteMaterial({
+            // Create a basic sprite material first
+            const basicMaterial = new THREE.SpriteMaterial({
                 map: messageTexture,
                 transparent: true,
-                depthTest: false // Ensure it renders on top
+                depthTest: false
             });
 
-            this.messageSprite = new THREE.Sprite(material);
+            this.messageSprite = new THREE.Sprite(basicMaterial);
+
+            // If glitch material is available, assign it after creating the sprite
+            if (this.messageGlitchMaterial) {
+                // Clone the glitch material to avoid sharing uniforms
+                const glitchMaterialClone = this.messageGlitchMaterial.clone();
+                glitchMaterialClone.uniforms.tDiffuse.value = messageTexture;
+                (this.messageSprite.material as any) = glitchMaterialClone; // Cast to any to bypass type check
+            }
 
             // Set scale based on texture dimensions to maintain aspect ratio
             const aspect = messageTexture.image.width / messageTexture.image.height;
@@ -311,6 +384,7 @@ export class UIManager {
         if (this.messageSprite && this.currentScene) {
             this.currentScene.remove(this.messageSprite);
             if (this.messageSprite.material) {
+                // Dispose of the material, especially if it was cloned
                 if (Array.isArray(this.messageSprite.material)) {
                     this.messageSprite.material.forEach(m => m.dispose());
                 } else {
@@ -417,6 +491,11 @@ export class UIManager {
         this.updateFPSCounter();
         this.updatePerformanceMetrics(updateTime, objectCount);
         this.updateScenePerformanceMetrics(scenePerformanceData);
+
+        // Update message glitch shader time uniform if the message sprite is using it and has uniforms
+        if (this.messageSprite && (this.messageSprite.material as any).uniforms?.time) {
+             (this.messageSprite.material as any).uniforms.time.value += deltaTime / 1000; // deltaTime is in ms, convert to seconds
+        }
     }
 
     private updatePerformanceMetrics(updateTime: number, objectCount: number): void {
@@ -480,4 +559,5 @@ private toggleSound(): void {
         console.log(`Sound ${soundToggle.checked ? 'muted' : 'unmuted'}`);
     }
 }
+
 }

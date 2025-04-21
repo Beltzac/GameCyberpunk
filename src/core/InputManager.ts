@@ -50,7 +50,7 @@ export class InputManager {
         this.soundManager.loadSound('ui_click', 'assets/sounds/click.mp3').catch(error => {
             console.error("InputManager: Failed to load click sound:", error);
         });
-        console.log("InputManager initialized with Camera, SceneManager, AssetLoader, UIManager, and SoundManager");
+        console.log("//SYS/INIT: InputManager operational. Modules loaded: Camera, SceneManager, AssetLoader, UIManager, SoundManager.");
     }
 
     private setupEventListeners(): void {
@@ -103,7 +103,7 @@ export class InputManager {
         if (this.soundManager) { // Check if soundManager is initialized
             this.soundManager.playSound('ui_click', 0.7);
         } else {
-            console.warn("InputManager: SoundManager not available to play click sound.");
+            console.warn("//ALERT/AUDIO: SoundManager module offline. Click sound unavailable.");
         }
         const rect = this.canvas.getBoundingClientRect();
 
@@ -111,7 +111,7 @@ export class InputManager {
         this.mouse.x = ((event.clientX - rect.left) / this.canvas.clientWidth) * 2 - 1;
         this.mouse.y = -((event.clientY - rect.top) / this.canvas.clientHeight) * 2 + 1;
 
-        console.log(`InputManager: Canvas clicked NDC (${this.mouse.x.toFixed(2)}, ${this.mouse.y.toFixed(2)})`);
+        console.log(`//INPUT/CLICK: Canvas hit detected @ NDC (${this.mouse.x.toFixed(2)}, ${this.mouse.y.toFixed(2)})`);
 
         const currentScene: Scene | null = this.sceneManager.currentScene;
 
@@ -159,43 +159,22 @@ export class InputManager {
             const objectName = firstIntersected.name;
             const objectType = firstIntersected.type;
             const objectUuid = firstIntersected.uuid;
-            let logMessage = `InputManager: Raycast hit object: `;
+            let textureName: string | undefined = undefined;
 
-            // Add Name or Type
-            if (objectName) {
-                logMessage += `Name='${objectName}'`;
-            } else {
-                logMessage += `Type='${objectType}'`;
-            }
-
-            // Add Texture Name if available
+            // Attempt to get Texture Name if available
             try {
-                let textureName: string | undefined = undefined;
-                const objectWithMaterial = firstIntersected as any; // Use 'any' for broader compatibility
-
+                const objectWithMaterial = firstIntersected as any;
                 if (objectWithMaterial.material) {
-                    const material = objectWithMaterial.material;
-                    // Handle potential array of materials
-                    const effectiveMaterial = Array.isArray(material) ? material[0] : material;
-
-                    if (effectiveMaterial && effectiveMaterial.map && effectiveMaterial.map.name) {
-                        textureName = effectiveMaterial.map.name;
+                    const material = Array.isArray(objectWithMaterial.material) ? objectWithMaterial.material[0] : objectWithMaterial.material;
+                    if (material && material.map && material.map.name) {
+                        textureName = material.map.name;
                     }
                 }
-
-                if (textureName) {
-                    logMessage += `, Texture='${textureName}'`;
-                } else {
-                    // Optional: Log if texture name couldn't be found for debugging
-                    // console.log(`InputManager: Texture name not found for object ${objectUuid}`);
-                }
             } catch (e) {
-                console.warn(`InputManager: Error accessing texture name for object ${objectUuid}:`, e);
+                console.warn(`//ALERT/TEXTURE: Failed to access texture data for object ${objectUuid}. Error: ${e}`);
             }
 
-            logMessage += ` (UUID: ${objectUuid})`; // Always include UUID for certainty
-            console.log(logMessage);
-
+            console.log(`//INPUT/HIT: Target acquired. Type: ${objectType}, Name: '${objectName || 'N/A'}', UUID: ${objectUuid}${textureName ? `, Texture: '${textureName}'` : ''}`);
             // Forward intersects to current scene's click handler
             await currentScene.handleClick(intersects);
 
@@ -213,7 +192,7 @@ export class InputManager {
     private handleKeyDown(event: KeyboardEvent): void {
         // console.log(`InputManager: Key down - ${event.key}`); // Optional: Log key presses
         if (event.key.toLowerCase() === 'p') {
-            console.log("InputManager: 'P' key pressed. Toggling debug overlay.");
+            console.log("//INPUT/KEY: 'P' key engaged. Debug overlay status toggle initiated.");
             this.uiManager.toggleDebugOverlay();
         }
         // Notify relevant systems if needed for other keys
@@ -245,7 +224,7 @@ export class InputManager {
         document.body.style.cursor = 'auto';
         this.canvas.style.cursor = 'auto';
 
-        console.log("InputManager disposed");
+        console.log("//SYS/SHUTDOWN: InputManager module offline.");
     }
 
     // --- Custom Cursor Logic ---
@@ -279,7 +258,7 @@ export class InputManager {
             const addCursorToScene = (scene: Scene | null) => {
                 if (scene && this.cursorMesh && !scene.threeScene.children.includes(this.cursorMesh)) {
                     scene.threeScene.add(this.cursorMesh);
-                    console.log("Cursor added to scene:", scene.constructor.name);
+                    console.log("//SYS/CURSOR: Cursor module injected into scene:", scene.constructor.name);
                 }
             };
 
@@ -294,10 +273,10 @@ export class InputManager {
             document.body.style.cursor = 'none';
             this.canvas.style.cursor = 'none';
 
-            console.log("Custom cursor initialized.");
+            console.log("//SYS/CURSOR: Custom cursor module initialized.");
 
         } catch (error) {
-            console.error('Failed to load cursor texture:', error);
+            console.error('//ALERT/CURSOR: Failed to load cursor texture asset. Error:', error);
             // Restore system cursor on failure
             document.body.style.cursor = 'auto';
             this.canvas.style.cursor = 'auto';
@@ -352,7 +331,7 @@ export class InputManager {
             this.cursorMesh.position.x += cursorWidth / 2; // Approximate offset
             this.cursorMesh.position.y -= cursorHeight / 2; // Approximate offset
         } else {
-            console.warn("Unsupported camera type for cursor positioning.");
+            console.warn(`//ALERT/CAMERA: Unsupported camera type for cursor positioning: ${this.camera.type}`);
             return;
         }
 
@@ -360,7 +339,7 @@ export class InputManager {
         // Ensure cursor is in the current scene (might have been removed during scene change)
         const currentScene = this.sceneManager.currentScene.threeScene;
         if (!currentScene.children.includes(this.cursorMesh)) {
-            console.log("Re-adding cursor to scene:", this.sceneManager.currentScene.constructor.name);
+            console.log("//SYS/CURSOR: Re-injecting cursor module into scene:", this.sceneManager.currentScene.constructor.name);
             currentScene.add(this.cursorMesh);
         }
 
@@ -481,7 +460,7 @@ export class InputManager {
             const context = canvas.getContext('2d', { willReadFrequently: true }); // Important for getImageData performance
 
             if (!context) {
-                console.warn("Could not get 2D context for alpha checking.");
+                console.warn("//ALERT/GRAPHICS: Unable to acquire 2D context for alpha check.");
                 return 1; // Cannot check alpha
             }
 
@@ -621,7 +600,7 @@ export class InputManager {
             // For perspective, we might still want it to face the camera plane
             ringMesh.quaternion.copy(this.camera.quaternion); // Align with camera rotation
         } else {
-            console.warn("Unsupported camera type for click animation positioning.");
+            console.warn(`//ALERT/CAMERA: Unsupported camera type for click animation positioning: ${this.camera.type}`);
             // Fallback position (might not look right)
             ringMesh.position.set(0, 0, -1.5);
         }
