@@ -206,53 +206,77 @@ export class UIManager {
         this.messageGlitchMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 time: { value: 0.0 },
-                intensity: { value: 1.0 }, // Increased intensity for more visible glitch effect
-                tDiffuse: { value: null } // Will be set dynamically with messageTexture
+                intensity: { value: 0.4 }, // Increased base intensity
+                tDiffuse: { value: null }
             },
-            vertexShader: `
-                varying vec2 vUv;
-                void main() {
-                    vUv = uv;
-                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                }
-            `,
-            fragmentShader: `
-                uniform float time;
-                uniform float intensity;
-                uniform sampler2D tDiffuse;
-                varying vec2 vUv;
+            vertexShader: [
+                "varying vec2 vUv;",
+                "void main() {",
+                "    vUv = uv;",
+                "    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);",
+                "}"
+            ].join("\n"),
+            fragmentShader: [
+                "uniform float time;",
+                "uniform float intensity;",
+                "uniform sampler2D tDiffuse;",
+                "varying vec2 vUv;",
 
-                float rand(vec2 co){
-                    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
-                }
+                "// Random number generator",
+                "float random(vec2 p) {",
+                "    vec2 k = vec2(",
+                "        23.14069263277926, // e^pi",
+                "        2.665144142690225 // 2^sqrt(2)",
+                "    );",
+                "    return fract(cos(dot(p, k)) * 12345.6789);",
+                "}",
 
-                void main() {
-                    vec2 uv = vUv;
-                    float glitchTime = mod(time * 0.5 + intensity * 5.0, 2.0);
-                    float displacement = intensity * (rand(vec2(glitchTime)) - 0.5) * 0.1;
-                    float colorShift = intensity * (rand(vec2(glitchTime + 0.1)) - 0.5) * 0.05;
+                "// RGB separation effect",
+                "vec3 rgbShift(vec2 p, float amount) {",
+                "    float r = texture2D(tDiffuse, p + vec2(amount * 0.05, 0.0)).r;",
+                "    float g = texture2D(tDiffuse, p + vec2(-amount * 0.03, 0.0)).g;",
+                "    float b = texture2D(tDiffuse, p + vec2(amount * 0.02, amount * 0.02)).b;",
+                "    return vec3(r, g, b);",
+                "}",
 
-                    // Apply horizontal displacement based on random chance
-                    if (rand(vec2(floor(glitchTime * 10.0))) > 0.85) {
-                        uv.x += displacement;
-                    }
+                "// Scan line effect",
+                "float scanLine(float y, float t) {",
+                "    return sin(y * 800.0 + t * 10.0) * 0.1 * intensity;",
+                "}",
 
-                    vec4 color = texture2D(tDiffuse, uv);
+                "void main() {",
+                "    vec2 uv = vUv;",
+                "    vec4 baseColor = texture2D(tDiffuse, uv);",
+                "    if (baseColor.a == 0.0) { discard; }", // Skip transparent fragments
+                "    ",
+                "    // Time-based distortion",
+                "    float t = time * 2.0;",
+                "    ",
+                "    // Screen tearing effect",
+                "    if (random(vec2(t, uv.y)) > 0.99) {",
+                "        uv.x += random(vec2(t, uv.y)) * 0.2 * intensity;",
+                "    }",
 
-                    // Apply color shift based on random chance
-                    if (rand(vec2(floor(glitchTime * 15.0))) > 0.9) {
-                        color.r = texture2D(tDiffuse, uv + vec2(colorShift, 0.0)).r;
-                        color.g = texture2D(tDiffuse, uv - vec2(colorShift, 0.0)).g;
-                    }
+                "    // Get base color with distortion",
+                "    vec3 color = rgbShift(uv, intensity * 0.5);",
 
-                    // Add noise
-                    float noise = rand(uv + mod(time, 1.0)) * 0.2 * intensity;
-                    color.rgb -= noise;
+                "    // Scan lines",
+                "    color -= scanLine(uv.y, t);",
 
-                    // Cyberpunk-style color mixing while preserving transparency
-                    gl_FragColor = vec4(mix(vec3(0.0), color.rgb, intensity), color.a);
-                }
-            `,
+                "    // Digital noise",
+                "    float noise = random(uv + mod(t, 1.0)) * 0.3 * intensity;",
+                "    color += noise - 0.15;",
+
+                "    // Apply intensity",
+                "    color = mix(baseColor.rgb, color, intensity * 0.7);",
+
+                "    // Bright neon highlights",
+                "    float highlight = max(0.0, color.r + color.g + color.b - 1.5);",
+                "    color += vec3(highlight * 0.5, highlight * 0.3, highlight * 0.7);",
+
+                "    gl_FragColor = vec4(color, baseColor.a);",
+                "}"
+            ].join("\n"),
             transparent: true,
             depthTest: false
         });
@@ -282,7 +306,7 @@ export class UIManager {
         // Set font and measure text to determine canvas size
         const fontSize = 70; // Adjust font size as needed
         // Use the loaded font
-        context.font = `bold ${fontSize}px Thata-Regular, sans-serif`;
+        context.font = "bold " + fontSize + "px Thata-Regular, sans-serif";
         const metrics = context.measureText(message);
         const textWidth = metrics.width;
         const textHeight = fontSize * 1.2; // Estimate height with some padding
@@ -294,7 +318,7 @@ export class UIManager {
         canvas.height = canvasHeight;
 
         // Redraw text on the resized canvas
-        context.font = `bold ${fontSize}px Thata-Regular, sans-serif`;
+        context.font = "bold " + fontSize + "px Thata-Regular, sans-serif";
         context.fillStyle = '#00f0ff'; // Neon blue cyberpunk text color
         context.textAlign = 'center';
         context.textBaseline = 'middle';
@@ -433,7 +457,7 @@ export class UIManager {
         const selectedScene = sceneSelect?.value;
 
         if (selectedScene) {
-            console.log(`Debug Overlay: Requesting scene change to "${selectedScene}"`);
+            console.log("Debug Overlay: Requesting scene change to \"" + selectedScene + "\"");
             // Assuming changeScene handles transitions etc.
             await this.sceneManager.changeScene(selectedScene);
             this.hideDebugOverlay(); // Hide after selection
@@ -453,7 +477,7 @@ export class UIManager {
             if (initialSceneValue) {
                 initialSceneValue.textContent = selectedScene;
             }
-            console.log(`Debug Overlay: Initial scene set to "${selectedScene}" in localStorage.`);
+            console.log("Debug Overlay: Initial scene set to \"" + selectedScene + "\" in localStorage.");
         } else {
             console.warn("Debug Overlay: No scene selected to set as initial.");
         }
@@ -502,7 +526,7 @@ export class UIManager {
     private updatePerformanceMetrics(updateTime: number, objectCount: number): void {
         const updateTimeElement = this.debugOverlay?.querySelector<HTMLSpanElement>('#debug-update-time-value');
         if (updateTimeElement) {
-            updateTimeElement.textContent = `${updateTime.toFixed(2)} ms`;
+            updateTimeElement.textContent = updateTime.toFixed(2) + " ms";
         }
 
         const objectCountElement = this.debugOverlay?.querySelector<HTMLSpanElement>('#debug-object-count-value');
@@ -522,7 +546,7 @@ export class UIManager {
         for (const key in performanceData) {
             if (Object.prototype.hasOwnProperty.call(performanceData, key)) {
                 const listItem = document.createElement('li');
-                listItem.textContent = `${key}: ${performanceData[key].toFixed(2)} ms`;
+                listItem.textContent = key + ": " + performanceData[key].toFixed(2) + " ms";
                 performanceList.appendChild(listItem);
             }
         }
@@ -544,12 +568,12 @@ private updateFPSCounter(): void {
 }
 
 public showScreen(screenId: string): void {
-    console.log(`UIManager: Showing screen ${screenId} (placeholder)`);
+    console.log("UIManager: Showing screen " + screenId + " (placeholder)");
     // Placeholder for other UI screens
 }
 
 public hideScreen(screenId: string): void {
-    console.log(`UIManager: Hiding screen ${screenId} (placeholder)`);
+    console.log("UIManager: Hiding screen " + screenId + " (placeholder)");
     // Placeholder for other UI screens
 }
 
@@ -557,7 +581,7 @@ private toggleSound(): void {
     const soundToggle = this.debugOverlay?.querySelector<HTMLInputElement>('#debug-sound-toggle');
     if (soundToggle && this.soundManager) {
         this.soundManager.muteAll(soundToggle.checked);
-        console.log(`Sound ${soundToggle.checked ? 'muted' : 'unmuted'}`);
+        console.log("Sound " + (soundToggle.checked ? "muted" : "unmuted"));
     }
 }
 
