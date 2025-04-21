@@ -212,9 +212,9 @@ export class UIManager {
         this.messageGlitchMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 time: { value: 0.0 },
-                rgbShiftIntensity: { value: 0.3 },
+                rgbShiftIntensity: { value: 0 },
                 scanLineIntensity: { value: 0.8 },
-                noiseIntensity: { value: 0.8 },
+                noiseIntensity: { value: 0.0 },
                 tearIntensity: { value: 3.0 },
                 highlightIntensity: { value: 0.5 },
                 opacity: { value: 1.0 },
@@ -248,11 +248,11 @@ export class UIManager {
                 }
 
                 // RGB separation effect
-                vec3 rgbShift(vec2 p, float amount) {
-                    float r = texture2D(tDiffuse, p + vec2(amount * 0.05, 0.0)).r;
-                    float g = texture2D(tDiffuse, p + vec2(-amount * 0.03, 0.0)).g;
-                    float b = texture2D(tDiffuse, p + vec2(amount * 0.02, amount * 0.02)).b;
-                    return vec3(r, g, b);
+                vec2 rgbShiftUV(vec2 p, float amount) {
+                    return p + vec2(
+                        amount * 0.05 * random(p + 0.1),
+                        amount * 0.03 * random(p + 0.2)
+                    );
                 }
 
                 // Scan line effect
@@ -262,26 +262,25 @@ export class UIManager {
 
                 void main() {
                     vec2 uv = vUv;
-                    vec4 baseColor = texture2D(tDiffuse, uv);
-
-                    // Time-based distortion
                     float t = time * 2.0;
 
-                    // Screen tearing effect - apply to all pixels
+                    // Apply all distortions to UV coordinates first
                     if (random(vec2(t, uv.y)) > 0.99) {
                         uv.x += random(vec2(t, uv.y)) * 0.2 * tearIntensity;
-                        baseColor = texture2D(tDiffuse, uv);
                     }
 
-                    // Get base color with distortion
-                    vec3 color = rgbShift(uv, rgbShiftIntensity);
+                    // Apply RGB shift to UV coordinates
+                    uv = rgbShiftUV(uv, rgbShiftIntensity);
 
-                    // Scan lines
-                    color -= scanLine(uv.y, t) * scanLineIntensity;
+                    // Apply scan line distortion
+                    uv.y += scanLine(uv.y, t) * scanLineIntensity * 0.01;
+
+                    // Sample texture after all distortions
+                    vec4 baseColor = texture2D(tDiffuse, uv);
 
                     // Digital noise
                     float noise = random(uv + mod(t, 1.0)) * noiseIntensity;
-                    color += noise - (noiseIntensity * 0.5);
+                    vec3 color = baseColor.rgb; //+ noise - (noiseIntensity * 0.5);
 
                     // Apply intensity
                     color = mix(baseColor.rgb, color, rgbShiftIntensity * 0.7);
@@ -558,8 +557,8 @@ export class UIManager {
                     // Adjust effect intensities during fadeout
                     const tearingIntensity = 0.5 + progress * 8.0;
                     const scanIntensity = 0.4 + progress * 3.0;
-                    const rgbShiftIntensity = 0.2 + progress * 1.5;
-                    const noiseIntensity = 0.3 + progress * 2.0;
+                    const rgbShiftIntensity = 0.0 + progress * 0.0;
+                    const noiseIntensity = 0.0 + progress * 0.0;
                     const highlightIntensity = 0.5 + progress * 2.0;
                     const opacity = 1.0 - progress;
 
