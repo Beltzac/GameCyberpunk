@@ -5,7 +5,8 @@ import { Scene } from '../core/Scene';
 import { AssetLoader } from '../utils/AssetLoader';
 import { SceneManager } from '../core/SceneManager';
 import { GameEngine } from '../core/GameEngine';
-import { VisualEffectManager, DustMotesEffect } from '../utils/VisualEffectManager';
+import { VisualEffectManager, DustMotesEffect, CoffeeSteamEffect } from '../utils/VisualEffectManager';
+
 
 export class Cena1TrabalhoScene extends Scene {
     private assetLoader: AssetLoader;
@@ -16,6 +17,7 @@ export class Cena1TrabalhoScene extends Scene {
     private notebookClosedTexture: THREE.Texture | null = null;
     private isNotebookOpen: boolean = true;
     private dustMotesEffect: DustMotesEffect | null = null;
+    private coffeeSteamEffect: CoffeeSteamEffect | null = null; // Add coffee steam effect property
     private performanceData: { [key: string]: number } = {};
 
     // New interactable objects
@@ -110,6 +112,14 @@ export class Cena1TrabalhoScene extends Scene {
                 this.threeScene.add(this.coffeeMugSprite);
             }
 
+            // Create coffee steam effect
+            if (this.coffeeMugSprite) {
+                this.coffeeSteamEffect = VisualEffectManager.createCoffeeSteamEffect(
+                    this.threeScene,
+                    this.coffeeMugSprite.position
+                );
+            }
+
             if (this.penTexture) {
                 const material = new THREE.SpriteMaterial({ map: this.penTexture, transparent: true });
                 this.penSprite = new THREE.Sprite(material);
@@ -165,6 +175,13 @@ export class Cena1TrabalhoScene extends Scene {
             this.dustMotesEffect.update(deltaTime);
         }
         this.performanceData['Dust Motes Effect'] = performance.now() - dustMotesStartTime;
+
+        // Update coffee steam effect
+        const coffeeSteamStartTime = performance.now();
+        if (this.coffeeSteamEffect) {
+            this.coffeeSteamEffect.update(deltaTime);
+        }
+        this.performanceData['Coffee Steam Effect'] = performance.now() - coffeeSteamStartTime;
     }
 
     render(renderer: THREE.WebGLRenderer): void {

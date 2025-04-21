@@ -14,6 +14,11 @@ export interface RainEffect {
     velocities: Float32Array;
     update: (deltaTime: number) => void;
 }
+export interface CoffeeSteamEffect {
+    update(deltaTime: number): void;
+    setPosition(x: number, y: number, z: number): void;
+}
+
 
 export class VisualEffectManager {
     public static createRainEffect(scene: THREE.Scene): RainEffect {
@@ -175,5 +180,106 @@ export class VisualEffectManager {
             }
         }
         dustGeometry.attributes.position.needsUpdate = true;
+    }
+
+    public static createCoffeeSteamEffect(scene: THREE.Scene, origin: THREE.Vector3): CoffeeSteamEffect {
+        const particleCount = 50; // Fewer particles for steam
+        const positions = new Float32Array(particleCount * 3);
+        const velocities = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 4); // For fading (RGBA)
+
+        for (let i = 0; i < particleCount; i++) {
+            const i3 = i * 3;
+            const i4 = i * 4;
+
+            // Position particles at the origin initially
+            positions[i3] = origin.x + (Math.random() - 0.5) * 0.1; // Slight horizontal variation
+            positions[i3 + 1] = origin.y + (Math.random() * 0.1); // Start slightly above origin
+            positions[i3 + 2] = origin.z + (Math.random() - 0.5) * 0.1; // Slight depth variation
+
+            // Give particles a slight upward and random horizontal velocity
+            velocities[i3] = (Math.random() - 0.5) * 0.01 - 0.006; // vx (slower, slight leftward blow)
+            velocities[i3 + 1] = 0.02 + Math.random() * 0.005; // vy (even slower upward)
+            velocities[i3 + 2] = (Math.random() - 0.5) * 0.01; // vz
+
+            // Initialize color (white) and alpha (opacity)
+            colors[i4] = 1.0; // R
+            colors[i4 + 1] = 1.0; // G
+            colors[i4 + 2] = 1.0; // B
+            colors[i4 + 3] = 0.1 + Math.random() * 0.2; // Initial random opacity (more transparent)
+        }
+
+        const steamGeometry = new THREE.BufferGeometry();
+        steamGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        steamGeometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
+        steamGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 4)); // Store color (RGBA)
+const steamMaterial = new THREE.PointsMaterial({
+    size: 1.0, // Even bigger size
+    transparent: true,
+    opacity: 1.0, // Max opacity controlled by vertex colors
+    vertexColors: true, // Use vertex colors for per-particle color/opacity
+    blending: THREE.AdditiveBlending,
+    depthWrite: false // Important for transparency
+});
+        const coffeeSteamParticles = new THREE.Points(steamGeometry, steamMaterial);
+        coffeeSteamParticles.position.z = origin.z + 0.01; // Render slightly in front of the origin
+        coffeeSteamParticles.renderOrder = 20; // Render in front of dust motes
+        scene.add(coffeeSteamParticles);
+        return {
+            update: (deltaTime: number) => {
+                VisualEffectManager.updateCoffeeSteam(coffeeSteamParticles, steamGeometry, velocities, deltaTime, origin);
+            },
+            setPosition: (x: number, y: number, z: number) => {
+                origin.set(x, y, z);
+                // Also update initial positions of particles if needed, or just let them drift from the new origin
+            }
+        };
+    }
+
+    private static updateCoffeeSteam(
+        steamParticles: THREE.Points,
+        steamGeometry: THREE.BufferGeometry,
+        velocities: Float32Array,
+        deltaTime: number,
+        origin: THREE.Vector3
+    ): void {
+        const positions = steamGeometry.attributes.position.array as Float32Array;
+        const colors = steamGeometry.attributes.color.array as Float32Array; // Get color attribute
+        const count = positions.length / 3;
+        const effectiveDeltaTime = Math.min(deltaTime, 0.1); // Cap delta time
+
+        for (let i = 0; i < count; i++) {
+            const i3 = i * 3;
+
+            // Update position based on velocity and delta time
+            positions[i3] += velocities[i3] * effectiveDeltaTime * 60;
+            positions[i3 + 1] += velocities[i3 + 1] * effectiveDeltaTime * 60;
+            positions[i3 + 2] += velocities[i3 + 2] * effectiveDeltaTime * 60;
+
+            // Fade out particles over time (update alpha channel of color)
+            colors[i * 4 + 3] -= effectiveDeltaTime * 0.03; // Even slower fade rate for smoother fade
+
+            // If particle opacity is low or it has moved far from origin, reset it
+            const distance = Math.sqrt(
+                Math.pow(positions[i3] - origin.x, 2) +
+                Math.pow(positions[i3 + 1] - origin.y, 2) +
+                Math.pow(positions[i3 + 2] - origin.z, 2)
+            );
+
+            if (colors[i * 4 + 3] <= 0 || distance > 2.5) { // Reset if faded or too far (increased distance)
+                positions[i3] = origin.x + (Math.random() - 0.5) * 0.1;
+                positions[i3 + 1] = origin.y + (Math.random() * 0.1);
+                positions[i3 + 2] = origin.z + (Math.random() - 0.5) * 0.1;
+
+                velocities[i3] = (Math.random() - 0.5) * 0.01 - 0.006; // vx (slower, slight leftward blow)
+                velocities[i3 + 1] = 0.02 + Math.random() * 0.005; // vy (even slower upward)
+                velocities[i3 + 2] = (Math.random() - 0.5) * 0.01; // vz
+
+                colors[i * 4 + 3] = 0.1 + Math.random() * 0.2; // Reset alpha (more transparent)
+            }
+        }
+        // Update attributes
+        (steamGeometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+        (steamGeometry.attributes.color as THREE.BufferAttribute).needsUpdate = true; // Update color attribute
     }
 }
