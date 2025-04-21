@@ -1,7 +1,5 @@
 // src/ui/UIManager.ts
 import * as THREE from 'three'; // Import THREE
-import { FontLoader } from 'three/examples/jsm/loaders/FontLoader'; // Import FontLoader
-import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry'; // Import TextGeometry
 import { SceneManager } from '../core/SceneManager'; // Import SceneManager
 import { SoundManager } from '../core/SoundManager'; // Import SoundManager
 
@@ -14,17 +12,21 @@ export class UIManager {
     private lastFrameTime: number = 0;
     private frameCount: number = 0;
 
-    // Properties for 3D message text
-    private messageText: THREE.Mesh | null = null;
+    // Properties for 2D message text
+    private messageSprite: THREE.Sprite | null = null;
+    private messageCanvas: HTMLCanvasElement | null = null;
+    private messageContext: CanvasRenderingContext2D | null = null;
+    private messageTexture: THREE.CanvasTexture | null = null;
     private messageTimeout: number | null = null;
-    private font: any | null = null; // To store the loaded font (using any to avoid Font export error)
     private currentScene: THREE.Scene | null = null; // Reference to the current scene
+    private messageFontLoaded: boolean = false; // Flag to track font loading
 
     constructor() {
         console.log("UIManager initialized");
         this.createDebugOverlay();
         this.hideDebugOverlay();
         this.lastFrameTime = performance.now();
+        this.loadMessageFont(); // Start loading the font
     }
 
     // Method to inject SceneManager dependency
@@ -42,8 +44,8 @@ export class UIManager {
     public setCurrentScene(scene: THREE.Scene): void {
         this.currentScene = scene;
         // If a message is currently displayed, add it to the new scene
-        if (this.messageText) {
-            this.currentScene.add(this.messageText);
+        if (this.messageSprite) {
+            this.currentScene.add(this.messageSprite);
         }
     }
 
@@ -180,183 +182,150 @@ export class UIManager {
         console.log("Debug overlay created.");
     }
 
-    // Method to load the font (call this during UIManager initialization or scene loading)
-    public async loadFont(fontPath: string): Promise<void> {
-        return new Promise((resolve, reject) => {
-            const loader = new FontLoader();
-            loader.load(
-                fontPath,
-                (font) => {
-                    this.font = font;
-                    console.log("Font loaded successfully:", fontPath, font);
-                    resolve();
-                },
-                undefined,
-                (error) => {
-                    console.error("Error loading font:", fontPath, error);
-                    reject(error);
-                }
-            );
-        });
+    // Method to load the message font
+    private async loadMessageFont(): Promise<void> {
+        try {
+            const fontFace = new (window as any).FontFace('Thata-Regular', 'url(assets/fonts/Thata-Regular-2024-08-15.ttf)');
+            await (document as any).fonts.add(fontFace);
+            await fontFace.load();
+            this.messageFontLoaded = true;
+            console.log("Message font 'Thata-Regular' loaded successfully.");
+        } catch (error) {
+            console.error("Error loading message font:", error);
+            this.messageFontLoaded = false; // Ensure flag is false on error
+        }
     }
 
-    // Method to set the current Three.js scene
-
-    // Method to create and show 3D message text
-    public showMessage(message: string, duration: number = 2000, position?: THREE.Vector3): THREE.Mesh | null {
-        if (!this.font) {
-            console.error("showMessage: Font not loaded. Cannot show message.");
-            return null;
+    // Method to create a 2D canvas texture for the message
+    private createMessageTexture(message: string): THREE.CanvasTexture {
+        // Dispose of previous texture and canvas if they exist
+        if (this.messageTexture) {
+            this.messageTexture.dispose();
         }
+        if (this.messageCanvas) {
+            this.messageCanvas = null;
+            this.messageContext = null;
+        }
+
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        if (!context) {
+            throw new Error("Could not get 2D context for message texture");
+        }
+
+        this.messageCanvas = canvas;
+        this.messageContext = context;
+
+        // Set font and measure text to determine canvas size
+        const fontSize = 60; // Adjust font size as needed
+        // Use the loaded font
+        context.font = `${fontSize}px Thata-Regular, sans-serif`;
+        const metrics = context.measureText(message);
+        const textWidth = metrics.width;
+        const textHeight = fontSize * 1.2; // Estimate height with some padding
+
+        // Set canvas dimensions (add some padding)
+        const canvasWidth = textWidth + 40;
+        const canvasHeight = textHeight + 20;
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+
+        // Redraw text on the resized canvas
+        context.font = `${fontSize}px Thata-Regular, sans-serif`;
+        context.fillStyle = 'white'; // Text color
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(message, canvasWidth / 2, canvasHeight / 2);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        this.messageTexture = texture;
+        return texture;
+    }
+
+    // Method to show 2D message text
+    public async showMessage(message: string, duration: number = 2000, position?: THREE.Vector3): Promise<THREE.Sprite | null> {
         if (!this.currentScene) {
-            console.error("showMessage: Current scene not set. Cannot show message in 3D.");
+            console.error("showMessage: Current scene not set. Cannot show message.");
             return null;
         }
 
-        // Log camera info (assume camera is a child of the scene or accessible globally)
-        let camera = null;
-        if ((this.currentScene as any).userData && (this.currentScene as any).userData.camera) {
-            camera = (this.currentScene as any).userData.camera;
-        } else if ((window as any).gameEngine && (window as any).gameEngine.camera) {
-            camera = (window as any).gameEngine.camera;
+        // Wait for the font to load if it hasn't already
+        if (!this.messageFontLoaded) {
+            console.log("showMessage: Font not loaded yet, waiting...");
+            await this.loadMessageFont();
+            if (!this.messageFontLoaded) {
+                console.error("showMessage: Failed to load font. Cannot show message.");
+                return null;
+            }
         }
-        if (camera) {
-            console.log("showMessage: Camera info", {
-                position: camera.position,
-                type: camera.type,
-                rotation: camera.rotation,
-                up: camera.up,
-                lookAt: camera.getWorldDirection ? camera.getWorldDirection(new THREE.Vector3()) : undefined
-            });
-        } else {
-            console.warn("showMessage: Camera not found in scene or global.");
-        }
-
-        // Log font object
-        console.log("showMessage: Loaded font object", this.font);
 
         // Clear any existing message and timeout
-        this.hideMessage(); // Use the new hide method
+        this.hideMessage();
 
-        console.log("showMessage: Creating message mesh", { message, duration, position, font: this.font, scene: this.currentScene });
+        console.log("showMessage: Creating message sprite", { message, duration, position, scene: this.currentScene });
 
-        const textGeometry = new TextGeometry(message, {
-             font: this.font,
-            // size: 2, // Large size for visibility
-            // depth: 0.2, // Thicker for visibility
-            // curveSegments: 12,
-            // bevelEnabled: false,
-            size: 1,
-            depth: 1,
-            curveSegments: 12,
-            bevelEnabled: true,
-            bevelThickness: 0.1,
-            bevelSize: 0.1,
-            bevelOffset: 0,
-            bevelSegments: 5
-        });
+        try {
+            const messageTexture = this.createMessageTexture(message);
 
-        textGeometry.computeBoundingBox();
-        const textWidth = textGeometry.boundingBox!.max.x - textGeometry.boundingBox!.min.x;
-        const bbox = textGeometry.boundingBox;
-        console.log("showMessage: TextGeometry bounding box", bbox);
-        if (textGeometry.attributes && textGeometry.attributes.position) {
-            console.log("showMessage: TextGeometry vertex count", textGeometry.attributes.position.count);
-            // Log first 10 vertex positions
-            const pos = textGeometry.attributes.position;
-            const verts = [];
-            for (let i = 0; i < Math.min(10, pos.count); i++) {
-                verts.push([pos.getX(i), pos.getY(i), pos.getZ(i)]);
+            const material = new THREE.SpriteMaterial({
+                map: messageTexture,
+                transparent: true,
+                depthTest: false // Ensure it renders on top
+            });
+
+            this.messageSprite = new THREE.Sprite(material);
+
+            // Set scale based on texture dimensions to maintain aspect ratio
+            const aspect = messageTexture.image.width / messageTexture.image.height;
+            const baseHeight = 1; // Base height for the sprite
+            this.messageSprite.scale.set(baseHeight * aspect, baseHeight, 1);
+
+            // Set position - default to a position if none provided
+            if (position) {
+                this.messageSprite.position.copy(position);
+            } else {
+                // Default position: slightly in front of the camera's assumed default position
+                this.messageSprite.position.set(0, 0, 0.1); // Adjust Z based on camera setup
             }
-            console.log("showMessage: First 10 vertex positions", verts);
-        } else {
-            console.log("showMessage: TextGeometry has no position attribute");
+
+            // Add to the current scene
+            this.currentScene.add(this.messageSprite);
+
+            console.log("showMessage: Sprite created and added to scene", this.messageSprite);
+
+            // Set timeout to hide the message sprite
+            this.messageTimeout = setTimeout(() => {
+                this.hideMessage();
+            }, duration) as any;
+
+            return this.messageSprite; // Return the created sprite
+        } catch (error) {
+            console.error("Error creating message sprite:", error);
+            return null;
         }
-
-        // Try disabling face culling on the material
-        // Log index and groups for further diagnosis
-        console.log("showMessage: TextGeometry index", textGeometry.getIndex());
-        console.log("showMessage: TextGeometry groups", textGeometry.groups);
-
-        // Try using MeshNormalMaterial for further diagnosis
-        const textMaterial = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
-
-        this.messageText = new THREE.Mesh(textGeometry, textMaterial);
-
-        // Also try rendering as points for diagnosis
-        //const pointsMaterial = new THREE.PointsMaterial({ color: 0x00ff00, size: 0.2 });
-        //const points = new THREE.Points(textGeometry, pointsMaterial);
-
-        // Set position - default to a position if none provided
-        if (position) {
-            this.messageText.position.copy(position);
-            //points.position.copy(position);
-        } else {
-            // Center: directly in front of camera at (0,0,2)
-            this.messageText.position.set(0, 0, 2);
-            //points.position.set(0, 0, 2);
-        }
-
-        // Remove horizontal centering (no adjustment)
-        // Apply a reasonable scale factor for visibility
-        this.messageText.scale.set(1, 1, 1);
-        //points.scale.set(1, 1, 1);
-
-        // Add to the current scene
-        this.currentScene.add(this.messageText);
-        //this.currentScene.add(points);
-
-        // Add a debug box at the same position for comparison
-        const debugBoxGeo = new THREE.BoxGeometry(1, 1, 1);
-        const debugBoxMat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
-        const debugBox = new THREE.Mesh(debugBoxGeo, debugBoxMat);
-        debugBox.position.copy(this.messageText.position);
-        debugBox.position.z += 0.5; // Slightly in front of text
-        this.currentScene.add(debugBox);
-        console.log("showMessage: Added debug box at", debugBox.position);
-
-        console.log("showMessage: Mesh created and added to scene", this.messageText);
-        //console.log("showMessage: Points created and added to scene", points);
-
-        // Set timeout to hide the message, points, and debug box
-        this.messageTimeout = setTimeout(() => {
-            this.hideMessage();
-          //  this.currentScene && this.currentScene.remove(points);
-           // points.geometry.dispose();
-            //if (points.material) {
-              //  if (Array.isArray(points.material)) {
-                   // points.material.forEach(m => m.dispose());
-               // } else {
-                   // points.material.dispose();
-              //  }
-           // }
-            this.currentScene && this.currentScene.remove(debugBox);
-            debugBox.geometry.dispose();
-            if (debugBox.material) {
-                if (Array.isArray(debugBox.material)) {
-                    debugBox.material.forEach(m => m.dispose());
-                } else {
-                    debugBox.material.dispose();
-                }
-            }
-        }, duration) as any;
-
-        return this.messageText; // Return the created mesh
     }
 
-    // Method to hide the 3D message text
+    // Method to hide the 2D message text
     public hideMessage(): void {
-        if (this.messageText && this.currentScene) {
-            this.currentScene.remove(this.messageText);
-            if (this.messageText.geometry) this.messageText.geometry.dispose();
-            if (this.messageText.material) {
-                if (Array.isArray(this.messageText.material)) {
-                    this.messageText.material.forEach(m => m.dispose());
+        if (this.messageSprite && this.currentScene) {
+            this.currentScene.remove(this.messageSprite);
+            if (this.messageSprite.material) {
+                if (Array.isArray(this.messageSprite.material)) {
+                    this.messageSprite.material.forEach(m => m.dispose());
                 } else {
-                    this.messageText.material.dispose();
+                    this.messageSprite.material.dispose();
                 }
             }
-            this.messageText = null;
+            this.messageSprite = null;
+        }
+        if (this.messageTexture) {
+            this.messageTexture.dispose();
+            this.messageTexture = null;
+        }
+        if (this.messageCanvas) {
+            this.messageCanvas = null;
+            this.messageContext = null;
         }
         if (this.messageTimeout !== null) {
             clearTimeout(this.messageTimeout);

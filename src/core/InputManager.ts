@@ -126,7 +126,7 @@ export class InputManager {
         // Calculate objects intersecting the picking ray, filtering out non-interactive objects
         const allIntersects = this.clickRaycaster.intersectObjects(
             currentScene.threeScene.children.filter(obj =>
-                !obj.userData.isCustomCursor && !obj.userData.isBackground && obj.visible
+                !obj.userData.isCustomCursor && !obj.userData.isBackground && !obj.userData.isParticleSystem && obj.visible
             ),
             true // recursive
         );
@@ -382,7 +382,7 @@ export class InputManager {
 
         // Get interactive objects from the current scene
         const objects = this.sceneManager.currentScene.threeScene.children.filter(
-            obj => !obj.userData.isCustomCursor && !obj.userData.isBackground && obj.visible // Check visibility
+            obj => !obj.userData.isCustomCursor && !obj.userData.isBackground && !obj.userData.isParticleSystem && obj.visible // Check visibility
         );
 
         // Check for intersections

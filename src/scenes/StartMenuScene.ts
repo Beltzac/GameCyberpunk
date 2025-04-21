@@ -160,6 +160,7 @@ export class StartMenuScene extends Scene {
 
             const points = new THREE.Points(geometry, this.sparkMaterials[i]);
             points.visible = false;
+            points.userData.isParticleSystem = true; // Mark as particle system
             this.threeScene.add(points);
 
             this.sparks.push(points);

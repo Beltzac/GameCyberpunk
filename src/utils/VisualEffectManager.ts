@@ -60,6 +60,7 @@ export class VisualEffectManager {
         rainParticles.position.z = 0.01;
         rainParticles.renderOrder = 999;
         rainParticles.userData.isBackground = true;
+        rainParticles.userData.isParticleSystem = true; // Mark as particle system
         scene.add(rainParticles);
 
         return {
@@ -135,6 +136,7 @@ export class VisualEffectManager {
         dustParticles.position.z = 0;
         dustParticles.renderOrder = 10;
         dustParticles.userData.isBackground = true;
+        dustParticles.userData.isParticleSystem = true; // Mark as particle system
         scene.add(dustParticles);
 
         return {
@@ -224,6 +226,7 @@ const steamMaterial = new THREE.PointsMaterial({
         const coffeeSteamParticles = new THREE.Points(steamGeometry, steamMaterial);
         coffeeSteamParticles.position.z = origin.z + 0.01; // Render slightly in front of the origin
         coffeeSteamParticles.renderOrder = 20; // Render in front of dust motes
+        coffeeSteamParticles.userData.isParticleSystem = true; // Mark as particle system
         scene.add(coffeeSteamParticles);
         return {
             update: (deltaTime: number) => {

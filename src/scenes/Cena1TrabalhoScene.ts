@@ -50,7 +50,6 @@ export class Cena1TrabalhoScene extends Scene {
             console.log("Cena1TrabalhoScene initializing...");
 
             // Load the custom font for UI messages
-            await this.gameEngine.uiManager.loadFont('/assets/fonts/Thata_Regular.json');
 
 
             // Load sounds
@@ -107,7 +106,7 @@ export class Cena1TrabalhoScene extends Scene {
                 const material = new THREE.SpriteMaterial({ map: this.coffeeMugTexture, transparent: true });
                 this.coffeeMugSprite = new THREE.Sprite(material);
                 this.coffeeMugSprite.scale.set(1, 1, 1);
-                this.coffeeMugSprite.position.set(-2, -1, 0.1); // Example position
+                this.coffeeMugSprite.position.set(-2, -1, 0.9); // Example position
                 this.coffeeMugSprite.name = "CoffeeMug";
                 this.threeScene.add(this.coffeeMugSprite);
             }
@@ -124,7 +123,7 @@ export class Cena1TrabalhoScene extends Scene {
                 const material = new THREE.SpriteMaterial({ map: this.penTexture, transparent: true });
                 this.penSprite = new THREE.Sprite(material);
                 this.penSprite.scale.set(1, 1, 1);
-                this.penSprite.position.set(-2.5, -3.2, 0.1); // Example position
+                this.penSprite.position.set(-2.5, -3.2, 0.9); // Example position
                 this.penSprite.name = "Pen";
                 this.threeScene.add(this.penSprite);
             }
@@ -133,7 +132,7 @@ export class Cena1TrabalhoScene extends Scene {
                 const material = new THREE.SpriteMaterial({ map: this.papersTexture, transparent: true });
                 this.papersSprite = new THREE.Sprite(material);
                 this.papersSprite.scale.set(2, 1.5, 1);
-                this.papersSprite.position.set(4, -1.8, 0.1); // Example position
+                this.papersSprite.position.set(4, -1.8, 0.9); // Example position
                 this.papersSprite.name = "Papers";
                 this.threeScene.add(this.papersSprite);
             }
@@ -228,21 +227,21 @@ export class Cena1TrabalhoScene extends Scene {
             console.log('Notebook clicked - toggling');
             await this.toggleNotebook();
         } else if (clickedObject.name === "CoffeeMug") {
-            const messageMeshCoffee = this.gameEngine.uiManager.showMessage("João thinks: 'Another cup...'", 2000, new THREE.Vector3(2, -0.5, 5)); // Example 3D position
-            if (messageMeshCoffee) {
-                this.threeScene.add(messageMeshCoffee);
+            const messageSpriteCoffee = await this.gameEngine.uiManager.showMessage("João thinks: 'Another cup...'", 2000, new THREE.Vector3(2, -0.5, 1)); // Example 3D position
+            if (messageSpriteCoffee) {
+                this.threeScene.add(messageSpriteCoffee);
             }
             // Add more complex interaction here later if needed
         } else if (clickedObject.name === "Pen") {
-            const messageMeshPen = this.gameEngine.uiManager.showMessage("João doodles absently on a notepad.", 2000, new THREE.Vector3(-1, -2, 5)); // Example 3D position
-            if (messageMeshPen) {
-                this.threeScene.add(messageMeshPen);
+            const messageSpritePen = await this.gameEngine.uiManager.showMessage("João doodles absently on a notepad.", 2000, new THREE.Vector3(-1, -2, 1)); // Example 3D position
+            if (messageSpritePen) {
+                this.threeScene.add(messageSpritePen);
             }
             // Add more complex interaction here later if needed
         } else if (clickedObject.name === "Papers") {
-            const messageMeshPapers = this.gameEngine.uiManager.showMessage("João sighs at the endless stack of papers.", 2000, new THREE.Vector3(3, -1, 5)); // Example 3D position
-            if (messageMeshPapers) {
-                this.threeScene.add(messageMeshPapers);
+            const messageSpritePapers = await this.gameEngine.uiManager.showMessage("João sighs at the endless stack of papers.", 2000, new THREE.Vector3(3, -1, 1)); // Example 3D position
+            if (messageSpritePapers) {
+                this.threeScene.add(messageSpritePapers);
             }
             // Add more complex interaction here later if needed
         }
