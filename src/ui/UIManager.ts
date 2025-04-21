@@ -206,7 +206,7 @@ export class UIManager {
         this.messageGlitchMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 time: { value: 0.0 },
-                intensity: { value: 0.5 }, // Start with a fixed intensity, adjust as needed
+                intensity: { value: 1.0 }, // Increased intensity for more visible glitch effect
                 tDiffuse: { value: null } // Will be set dynamically with messageTexture
             },
             vertexShader: `
@@ -283,7 +283,7 @@ export class UIManager {
         // Set font and measure text to determine canvas size
         const fontSize = 60; // Adjust font size as needed
         // Use the loaded font
-        context.font = `${fontSize}px Thata-Regular, sans-serif`;
+        context.font = `bold ${fontSize}px Thata-Regular, sans-serif`;
         const metrics = context.measureText(message);
         const textWidth = metrics.width;
         const textHeight = fontSize * 1.2; // Estimate height with some padding
@@ -295,7 +295,7 @@ export class UIManager {
         canvas.height = canvasHeight;
 
         // Redraw text on the resized canvas
-        context.font = `${fontSize}px Thata-Regular, sans-serif`;
+        context.font = `bold ${fontSize}px Thata-Regular, sans-serif`;
         context.fillStyle = 'white'; // Text color
         context.textAlign = 'center';
         context.textBaseline = 'middle';
@@ -347,6 +347,7 @@ export class UIManager {
                 const glitchMaterialClone = this.messageGlitchMaterial.clone();
                 glitchMaterialClone.uniforms.tDiffuse.value = messageTexture;
                 (this.messageSprite.material as any) = glitchMaterialClone; // Cast to any to bypass type check
+                console.log("Applied glitch material to message sprite:", glitchMaterialClone);
             }
 
             // Set scale based on texture dimensions to maintain aspect ratio
@@ -494,7 +495,9 @@ export class UIManager {
 
         // Update message glitch shader time uniform if the message sprite is using it and has uniforms
         if (this.messageSprite && (this.messageSprite.material as any).uniforms?.time) {
-             (this.messageSprite.material as any).uniforms.time.value += deltaTime / 1000; // deltaTime is in ms, convert to seconds
+            const material = (this.messageSprite.material as any);
+            material.uniforms.time.value += deltaTime / 1000; // deltaTime is in ms, convert to seconds
+            console.log("Updated glitch shader time:", material.uniforms.time.value);
         }
     }
 
