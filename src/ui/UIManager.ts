@@ -21,6 +21,9 @@ export class UIManager {
     private currentScene: THREE.Scene | null = null; // Reference to the current scene
     private messageFontLoaded: boolean = false; // Flag to track font loading
     private messageGlitchMaterial: THREE.ShaderMaterial | null = null; // Add this property
+    private isFadingOut: boolean = false;
+    private fadeOutStartTime: number = 0;
+    private fadeOutDuration: number = 800; // milliseconds - Reduced duration for faster fade
 
     constructor() {
         console.log("UIManager initialized");
@@ -391,9 +394,9 @@ export class UIManager {
 
             console.log("showMessage: Sprite created and added to scene", this.messageSprite);
 
-            // Set timeout to hide the message sprite
+            // Set timeout to start the fade-out effect
             this.messageTimeout = setTimeout(() => {
-                this.hideMessage();
+                this.startMessageFadeOut();
             }, duration) as any;
 
             return this.messageSprite; // Return the created sprite
@@ -401,6 +404,24 @@ export class UIManager {
             console.error("Error creating message sprite:", error);
             return null;
         }
+    }
+
+    // Method to start the glitch fade-out effect
+    private startMessageFadeOut(): void {
+        if (this.messageSprite && (this.messageSprite.material as any).uniforms?.intensity) {
+            this.isFadingOut = true;
+            this.fadeOutStartTime = performance.now();
+            console.log("UIManager: Starting message fade-out.");
+        } else {
+            // If no sprite or glitch material, just hide it normally
+            this.hideMessage();
+        }
+        // Clear the initial display timeout
+        if (this.messageTimeout !== null) {
+            clearTimeout(this.messageTimeout);
+            this.messageTimeout = null;
+        }
+        //this.isFadingOut = false; // Stop any ongoing fade-out animation
     }
 
     // Method to hide the 2D message text
@@ -517,9 +538,36 @@ export class UIManager {
         this.updateScenePerformanceMetrics(scenePerformanceData);
 
         // Update message glitch shader time uniform if the message sprite is using it and has uniforms
-        if (this.messageSprite && (this.messageSprite.material as any).uniforms?.time) {
+        if (this.messageSprite && (this.messageSprite.material as any).uniforms) {
             const material = (this.messageSprite.material as any);
-            material.uniforms.time.value += deltaTime / 1000; // deltaTime is in ms, convert to seconds
+            // Update time uniform
+            if (material.uniforms.time) {
+                 material.uniforms.time.value += deltaTime / 1000; // deltaTime is in ms, convert to seconds
+            }
+
+            //console.log("UIManager: Updated message shader time uniform:", material.uniforms.time.value);
+
+            // Handle fade-out animation
+            // Handle fade-out animation
+            if (this.isFadingOut && material.uniforms?.intensity) {
+                const elapsed = performance.now() - this.fadeOutStartTime;
+                const progress = Math.min(elapsed / this.fadeOutDuration, 1.0);
+                // Dramatically increase intensity and add randomness for stronger glitch
+                const intensity = 0.4 + progress * 5.0; // Animate from 0.4 to 5.4
+                material.uniforms.intensity.value = intensity;
+                material.uniforms.time.value += deltaTime / 1000; // Ensure time keeps updating
+
+                // Force uniforms update
+                material.needsUpdate = true;
+
+                //console.log("UIManager: Fade-out progress:", progress, "Intensity:", intensity);
+
+                if (progress >= 1.0) {
+                    // Fade-out complete, hide the message
+                    this.hideMessage();
+                    this.isFadingOut = false;
+                }
+            }
         }
     }
 
