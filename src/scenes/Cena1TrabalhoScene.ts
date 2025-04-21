@@ -227,19 +227,19 @@ export class Cena1TrabalhoScene extends Scene {
             console.log('Notebook clicked - toggling');
             await this.toggleNotebook();
         } else if (clickedObject.name === "CoffeeMug") {
-            const messageSpriteCoffee = await this.gameEngine.uiManager.showMessage("João thinks: 'Another cup...'", 2000, new THREE.Vector3(2, -0.5, 1)); // Example 3D position
+            const messageSpriteCoffee = await this.gameEngine.uiManager.showMessage("Mais uma xícara...", 2000, new THREE.Vector3(2, -0.5, 1)); // Example 3D position
             if (messageSpriteCoffee) {
                 this.threeScene.add(messageSpriteCoffee);
             }
             // Add more complex interaction here later if needed
         } else if (clickedObject.name === "Pen") {
-            const messageSpritePen = await this.gameEngine.uiManager.showMessage("João doodles absently on a notepad.", 2000, new THREE.Vector3(-1, -2, 1)); // Example 3D position
+            const messageSpritePen = await this.gameEngine.uiManager.showMessage("Linhas no papel, imaginando outros lugares.", 2000, new THREE.Vector3(-1, -2, 1)); // Example 3D position
             if (messageSpritePen) {
                 this.threeScene.add(messageSpritePen);
             }
             // Add more complex interaction here later if needed
         } else if (clickedObject.name === "Papers") {
-            const messageSpritePapers = await this.gameEngine.uiManager.showMessage("João sighs at the endless stack of papers.", 2000, new THREE.Vector3(3, -1, 1)); // Example 3D position
+            const messageSpritePapers = await this.gameEngine.uiManager.showMessage("Cada folha um dia igual ao outro.", 2000, new THREE.Vector3(3, -1, 1)); // Example 3D position
             if (messageSpritePapers) {
                 this.threeScene.add(messageSpritePapers);
             }
