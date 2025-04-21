@@ -212,8 +212,12 @@ export class UIManager {
         this.messageGlitchMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 time: { value: 0.0 },
-                intensity: { value: 0.4 }, // Scan line intensity
-                opacity: { value: 1.0 }, // Message opacity
+                rgbShiftIntensity: { value: 0.3 },
+                scanLineIntensity: { value: 0.8 },
+                noiseIntensity: { value: 0.8 },
+                tearIntensity: { value: 3.0 },
+                highlightIntensity: { value: 0.5 },
+                opacity: { value: 1.0 },
                 tDiffuse: { value: null }
             },
             vertexShader: [
@@ -225,7 +229,11 @@ export class UIManager {
             ].join("\n"),
             fragmentShader: `
                 uniform float time;
-                uniform float intensity;
+                uniform float rgbShiftIntensity;
+                uniform float scanLineIntensity;
+                uniform float noiseIntensity;
+                uniform float tearIntensity;
+                uniform float highlightIntensity;
                 uniform float opacity;
                 uniform sampler2D tDiffuse;
                 varying vec2 vUv;
@@ -249,7 +257,7 @@ export class UIManager {
 
                 // Scan line effect
                 float scanLine(float y, float t) {
-                    return sin(y * 800.0 + t * 10.0) * 0.1 * intensity;
+                    return sin(y * 800.0 + t * 10.0) * 0.1;
                 }
 
                 void main() {
@@ -262,25 +270,25 @@ export class UIManager {
 
                     // Screen tearing effect
                     if (random(vec2(t, uv.y)) > 0.99) {
-                        uv.x += random(vec2(t, uv.y)) * 0.2 * intensity;
+                        uv.x += random(vec2(t, uv.y)) * 0.2 * tearIntensity;
                     }
 
                     // Get base color with distortion
-                    vec3 color = rgbShift(uv, intensity * 0.5);
+                    vec3 color = rgbShift(uv, rgbShiftIntensity);
 
                     // Scan lines
-                    color -= scanLine(uv.y, t);
+                    color -= scanLine(uv.y, t) * scanLineIntensity;
 
                     // Digital noise
-                    float noise = random(uv + mod(t, 1.0)) * 0.3 * intensity;
-                    color += noise - 0.15;
+                    float noise = random(uv + mod(t, 1.0)) * noiseIntensity;
+                    color += noise - (noiseIntensity * 0.5);
 
                     // Apply intensity
-                    color = mix(baseColor.rgb, color, intensity * 0.7);
+                    color = mix(baseColor.rgb, color, rgbShiftIntensity * 0.7);
 
                     // Bright neon highlights
                     float highlight = max(0.0, color.r + color.g + color.b - 1.5);
-                    color += vec3(highlight * 0.5, highlight * 0.3, highlight * 0.7);
+                    color += vec3(highlight * highlightIntensity * 0.5, highlight * highlightIntensity * 0.3, highlight * highlightIntensity * 0.7);
 
                     gl_FragColor = vec4(color, baseColor.a * opacity);
                 }
@@ -410,7 +418,7 @@ export class UIManager {
         const message = this.messages.find(m => m.sprite === sprite);
         if (!message) return;
 
-        if ((message.sprite.material as any).uniforms?.intensity) {
+        if ((message.sprite.material as any).uniforms?.scanLineIntensity) {
             message.isFading = true;
             message.fadeStartTime = performance.now();
             console.log("UIManager: Starting message fade-out.");
@@ -544,14 +552,22 @@ export class UIManager {
                 }
 
                 // Handle fade-out animation
-                if (message.isFading && material.uniforms?.intensity) {
+                if (message.isFading) {
                     const elapsed = performance.now() - message.fadeStartTime;
                     const progress = Math.min(elapsed / this.fadeOutDuration, 1.0);
-                    // Intensify scan lines while fading out
-                    const scanIntensity = 0.4 + progress * 3.0; // Stronger scan lines
-                    const opacity = 1.0 - progress; // Fade transparency
+                    // Adjust effect intensities during fadeout
+                    const tearingIntensity = 0.5 + progress * 8.0;
+                    const scanIntensity = 0.4 + progress * 3.0;
+                    const rgbShiftIntensity = 0.2 + progress * 1.5;
+                    const noiseIntensity = 0.3 + progress * 2.0;
+                    const highlightIntensity = 0.5 + progress * 2.0;
+                    const opacity = 1.0 - progress;
 
-                    material.uniforms.intensity.value = scanIntensity;
+                    material.uniforms.scanLineIntensity.value = scanIntensity;
+                    material.uniforms.rgbShiftIntensity.value = rgbShiftIntensity;
+                    material.uniforms.tearIntensity.value = tearingIntensity;
+                    material.uniforms.noiseIntensity.value = noiseIntensity;
+                    material.uniforms.highlightIntensity.value = highlightIntensity;
                     material.uniforms.opacity.value = opacity;
                     material.uniforms.time.value += deltaTime / 1000; // Ensure time keeps updating
 
