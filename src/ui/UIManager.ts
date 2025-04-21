@@ -29,12 +29,24 @@ export class UIManager {
 
     // Shader effect constants
     private readonly shaderIntensities = {
-        rgbShift: 0.0,
-        noise: 0.0,
-        highlight: 1.0,
+        // RGB Shift: Creates chromatic aberration by offsetting color channels (0.0-1.0)
+        // Implemented by distorting UV coordinates differently per channel in rgbShiftUV()
+        rgbShift: 0.15, //Good
 
-        scanLine: 4, //Good
-        tear: 0.2, //Good
+        // Noise: Digital static/glitch effect (0.0-1.0)
+        // Currently disabled (commented out in shader code)
+        noise: 0.0,
+
+        // Highlight: Enhances bright areas with neon glow (0.0-1.0)
+        // Detects bright pixels (r+g+b > 1.5) and boosts them with colored highlights
+        highlight: 0.0,
+
+        // Scan Lines: Adds horizontal CRT-style scan lines (0.0-5.0)
+        scanLine: 5, //Good
+
+        // Tear: Creates vertical screen tearing artifacts (0.0-5.0)
+        // Randomly shifts horizontal UV coordinates to simulate screen tearing
+        tear: 0.1, //Good
     };
 
     constructor() {
@@ -221,89 +233,104 @@ export class UIManager {
         // Adapt the shader code from SceneManager
         this.messageGlitchMaterial = new THREE.ShaderMaterial({
             uniforms: {
-                time: { value: 0.0 },
-                rgbShiftIntensity: { value: this.shaderIntensities.rgbShift },
-                scanLineIntensity: { value: this.shaderIntensities.scanLine },
-                noiseIntensity: { value: this.shaderIntensities.noise },
-                tearIntensity: { value: this.shaderIntensities.tear },
-                highlightIntensity: { value: this.shaderIntensities.highlight },
-                opacity: { value: 1.0 },
-                tDiffuse: { value: null }
+              time:               { value: 0.0 },
+              rgbShiftIntensity:  { value: this.shaderIntensities.rgbShift },
+              scanLineIntensity:  { value: this.shaderIntensities.scanLine },
+              noiseIntensity:     { value: this.shaderIntensities.noise },
+              tearIntensity:      { value: this.shaderIntensities.tear },
+              highlightIntensity: { value: this.shaderIntensities.highlight },
+              opacity:            { value: 1.0 },      // layer strength
+              tDiffuse:           { value: null }      // <- set this each frame/pass
             },
-            vertexShader: [
-                "varying vec2 vUv;",
-                "void main() {",
-                "    vUv = uv;",
-                "    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);",
-                "}"
-            ].join("\n"),
+
+            vertexShader: /* unchanged */ `
+              varying vec2 vUv;
+              void main(){
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+              }
+            `,
             fragmentShader: `
-                uniform float time;
-                uniform float rgbShiftIntensity;
-                uniform float scanLineIntensity;
-                uniform float noiseIntensity;
-                uniform float tearIntensity;
-                uniform float highlightIntensity;
-                uniform float opacity;
-                uniform sampler2D tDiffuse;
-                varying vec2 vUv;
+     uniform float  time;
+uniform float  rgbShiftIntensity;
+uniform float  scanLineIntensity;
+uniform float  noiseIntensity;
+uniform float  tearIntensity;
+uniform float  highlightIntensity;
+uniform float  opacity;          // final alpha
+uniform sampler2D tDiffuse;
 
-                // Random number generator
-                float random(vec2 p) {
-                    vec2 k = vec2(
-                        23.14069263277926, // e^pi
-                        2.665144142690225 // 2^sqrt(2)
-                    );
-                    return fract(cos(dot(p, k)) * 12345.6789);
-                }
+varying vec2 vUv;
 
-                // RGB separation effect
-                vec2 rgbShiftUV(vec2 p, float amount) {
-                    return p + vec2(
-                        amount * 0.05 * random(p + 0.1),
-                        amount * 0.03 * random(p + 0.2)
-                    );
-                }
+/* ---------- helpers ---------- */
+float random(vec2 p){
+    vec2 k = vec2(23.14069263277926, 2.665144142690225);
+    return fract(cos(dot(p,k))*12345.6789);
+}
 
-                // Scan line effect
-                float scanLine(float y, float t) {
-                    return sin(y * 800.0 + t * 10.0) * 0.1;
-                }
+float scanLine(float y,float t){
+    return sin(y*800.0 + t*10.0) * 0.1;
+}
 
-                void main() {
-                    vec2 uv = vUv;
-                    float t = time * 2.0;
+vec3 rgbShift(vec2 p, float amount, float t){
+    float rOff = 0.05 * amount * random(vec2(t*0.7, p.y));
+    float gOff = 0.03 * amount * random(vec2(t*0.8, p.y + 0.3));
+    float bOff = 0.04 * amount * random(vec2(t*0.9, p.y + 0.6));
 
-                    // Apply all distortions to UV coordinates first
-                    if (random(vec2(t, uv.y)) > 0.99) {
-                        uv.x += random(vec2(t, uv.y)) * 0.2 * tearIntensity;
-                    }
+    // clamp each channel UV to [0,1]
+    vec2 rp = clamp(p + vec2(rOff, 0.0), 0.0, 1.0);
+    vec2 gp = clamp(p + vec2(gOff, 0.0), 0.0, 1.0);
+    vec2 bp = clamp(p + vec2(bOff, 0.0), 0.0, 1.0);
 
-                    // Apply RGB shift to UV coordinates
-                    uv = rgbShiftUV(uv, rgbShiftIntensity);
+    float r = texture2D(tDiffuse, rp).r;
+    float g = texture2D(tDiffuse, gp).g;
+    float b = texture2D(tDiffuse, bp).b;
+    return vec3(r, g, b);
+}
 
-                    // Apply scan line distortion
-                    uv.y += scanLine(uv.y, t) * scanLineIntensity * 0.01;
+void main(){
+    vec2 uv = vUv;
+    float t  = time * 2.0;
 
-                    // Sample texture after all distortions
-                    vec4 baseColor = texture2D(tDiffuse, uv);
+    // horizontal tear (clamped)
+    if(random(vec2(t, uv.y)) > 0.99){
+        float tearOff = random(vec2(t, uv.y)) * 0.2 * tearIntensity;
+        uv.x = clamp(uv.x + tearOff, 0.0, 1.0);
+    }
 
-                    // Digital noise
-                    float noise = random(uv + mod(t, 1.0)) * noiseIntensity;
-                    vec3 color = baseColor.rgb; //+ noise - (noiseIntensity * 0.5);
+    // vertical wobble (clamped)
+    uv.y = clamp(uv.y + scanLine(uv.y, t) * scanLineIntensity * 0.01, 0.0, 1.0);
 
-                    // Apply intensity
-                    color = mix(baseColor.rgb, color, rgbShiftIntensity * 0.7);
+    // base colour
+    vec3 color = rgbShift(uv, rgbShiftIntensity, t);
 
-                    // Bright neon highlights
-                    float highlight = max(0.0, color.r + color.g + color.b - 1.5);
-                    color += vec3(highlight * highlightIntensity * 0.5, highlight * highlightIntensity * 0.3, highlight * highlightIntensity * 0.7);
+    // digital noise
+    float n = random(uv + mod(t, 1.0)) * noiseIntensity;
+    color += n - noiseIntensity * 0.5;
 
-                    gl_FragColor = vec4(color, baseColor.a * opacity);
-                }
+    // neon highlight
+    float h = max(0.0, dot(color, vec3(1.0)) - 1.5);
+    color += vec3(
+        h * highlightIntensity * 0.5,
+        h * highlightIntensity * 0.3,
+        h * highlightIntensity * 0.7
+    );
+
+    // preserve original alpha
+    float origA = texture2D(tDiffuse, vUv).a;
+    //gl_FragColor = vec4(color, origA * opacity);
+    gl_FragColor = vec4(color, opacity);
+
+}
+
+
+
+
             `,
             transparent: true,
-            depthTest: false
+            depthTest: false,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
         });
         console.log("UIManager: Message glitch material created.");
     }
@@ -572,11 +599,11 @@ export class UIManager {
                     const highlightIntensity = this.shaderIntensities.highlight + progress * 1.1;
                     const opacity = 1.0 - progress;
 
-                    material.uniforms.scanLineIntensity.value = scanIntensity;
-                    material.uniforms.rgbShiftIntensity.value = rgbShiftIntensity;
-                    material.uniforms.tearIntensity.value = tearingIntensity;
-                    material.uniforms.noiseIntensity.value = noiseIntensity;
-                    material.uniforms.highlightIntensity.value = highlightIntensity;
+                    // material.uniforms.scanLineIntensity.value = scanIntensity;
+                    // material.uniforms.rgbShiftIntensity.value = rgbShiftIntensity;
+                    // material.uniforms.tearIntensity.value = tearingIntensity;
+                    // material.uniforms.noiseIntensity.value = noiseIntensity;
+                    // material.uniforms.highlightIntensity.value = highlightIntensity;
                     material.uniforms.opacity.value = opacity;
                     material.uniforms.time.value += deltaTime / 1000; // Ensure time keeps updating
 
