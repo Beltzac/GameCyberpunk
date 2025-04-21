@@ -21,6 +21,7 @@ export class UIManager {
         timeout: number;
         fadeStartTime: number;
         isFading: boolean;
+        isFadeIn: boolean;
     }[] = [];
     private currentScene: THREE.Scene | null = null; // Reference to the current scene
     private messageFontLoaded: boolean = false; // Flag to track font loading
@@ -436,9 +437,22 @@ void main(){
                 timeout: setTimeout(() => {
                     this.startMessageFadeOut(messageSprite);
                 }, duration) as any,
-                fadeStartTime: 0,
-                isFading: false
+                fadeStartTime: performance.now(),
+                isFading: true, // Start with fade-in
+                isFadeIn: true  // Mark as fade-in phase
             };
+
+            // Set initial fade-in values
+            if ((messageSprite.material as any).uniforms) {
+                const material = (messageSprite.material as any);
+                material.uniforms.scanLineIntensity.value = 0;
+                material.uniforms.rgbShiftIntensity.value = 0;
+                material.uniforms.tearIntensity.value = 0;
+                material.uniforms.noiseIntensity.value = 0;
+                material.uniforms.highlightIntensity.value = 0;
+                material.uniforms.opacity.value = 0;
+                material.needsUpdate = true;
+            }
 
             this.messages.push(messageEntry);
 
@@ -587,32 +601,42 @@ void main(){
                     material.uniforms.time.value += deltaTime / 1000; // deltaTime is in ms, convert to seconds
                 }
 
-                // Handle fade-out animation
+                // Handle fade animation
                 if (message.isFading) {
                     const elapsed = performance.now() - message.fadeStartTime;
                     const progress = Math.min(elapsed / this.fadeOutDuration, 1.0);
-                    // Adjust effect intensities during fadeout
-                    const tearingIntensity = this.shaderIntensities.tear + progress *  1.1;
-                    const scanIntensity = this.shaderIntensities.scanLine + progress *  1.1;
-                    const rgbShiftIntensity = this.shaderIntensities.rgbShift + progress *  1.1;
-                    const noiseIntensity = this.shaderIntensities.noise + progress *  1.1;
-                    const highlightIntensity = this.shaderIntensities.highlight + progress * 1.1;
-                    const opacity = 1.0 - progress;
 
-                    material.uniforms.scanLineIntensity.value = scanIntensity;
-                    material.uniforms.rgbShiftIntensity.value = rgbShiftIntensity;
-                    material.uniforms.tearIntensity.value = tearingIntensity;
-                    material.uniforms.noiseIntensity.value = noiseIntensity;
-                    material.uniforms.highlightIntensity.value = highlightIntensity;
+                    if (message.isFadeIn) {
+                        // Fade-in: increase intensities from 0 to normal
+                        material.uniforms.scanLineIntensity.value = progress * this.shaderIntensities.scanLine;
+                        material.uniforms.rgbShiftIntensity.value = progress * this.shaderIntensities.rgbShift;
+                        material.uniforms.tearIntensity.value = progress * this.shaderIntensities.tear;
+                        material.uniforms.noiseIntensity.value = progress * this.shaderIntensities.noise;
+                        material.uniforms.highlightIntensity.value = progress * this.shaderIntensities.highlight;
+                        material.uniforms.opacity.value = progress;
 
-                    material.uniforms.opacity.value = opacity;
+                        // When fade-in completes, mark as not fading anymore
+                        if (progress >= 1.0) {
+                            message.isFading = false;
+                            message.isFadeIn = false;
+                        }
+                    } else {
+                        // Fade-out: increase intensities beyond normal and decrease opacity
+                        material.uniforms.scanLineIntensity.value = this.shaderIntensities.scanLine + progress * 1.1;
+                        material.uniforms.rgbShiftIntensity.value = this.shaderIntensities.rgbShift + progress * 1.1;
+                        material.uniforms.tearIntensity.value = this.shaderIntensities.tear + progress * 1.1;
+                        material.uniforms.noiseIntensity.value = this.shaderIntensities.noise + progress * 1.1;
+                        material.uniforms.highlightIntensity.value = this.shaderIntensities.highlight + progress * 1.1;
+                        material.uniforms.opacity.value = 1.0 - progress;
+                    }
+
                     material.uniforms.time.value += deltaTime / 1000; // Ensure time keeps updating
 
                     // Force uniforms update
                     material.needsUpdate = true;
                     material.transparent = true;
 
-                    if (progress >= 1.0) {
+                    if (progress >= 2.0) {
                         // Fade-out complete, hide the message
                         this.hideMessage(message.sprite);
                     }
