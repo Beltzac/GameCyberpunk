@@ -27,6 +27,16 @@ export class UIManager {
     private messageGlitchMaterial: THREE.ShaderMaterial | null = null; // Add this property
     private fadeOutDuration: number = 800; // milliseconds - Reduced duration for faster fade
 
+    // Shader effect constants
+    private readonly shaderIntensities = {
+        rgbShift: 0.0,
+        noise: 0.0,
+        highlight: 1.0,
+
+        scanLine: 4, //Good
+        tear: 0.2, //Good
+    };
+
     constructor() {
         console.log("UIManager initialized");
         this.createDebugOverlay();
@@ -212,11 +222,11 @@ export class UIManager {
         this.messageGlitchMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 time: { value: 0.0 },
-                rgbShiftIntensity: { value: 0 },
-                scanLineIntensity: { value: 0.8 },
-                noiseIntensity: { value: 0.0 },
-                tearIntensity: { value: 3.0 },
-                highlightIntensity: { value: 0.5 },
+                rgbShiftIntensity: { value: this.shaderIntensities.rgbShift },
+                scanLineIntensity: { value: this.shaderIntensities.scanLine },
+                noiseIntensity: { value: this.shaderIntensities.noise },
+                tearIntensity: { value: this.shaderIntensities.tear },
+                highlightIntensity: { value: this.shaderIntensities.highlight },
                 opacity: { value: 1.0 },
                 tDiffuse: { value: null }
             },
@@ -555,11 +565,11 @@ export class UIManager {
                     const elapsed = performance.now() - message.fadeStartTime;
                     const progress = Math.min(elapsed / this.fadeOutDuration, 1.0);
                     // Adjust effect intensities during fadeout
-                    const tearingIntensity = 0.5 + progress * 8.0;
-                    const scanIntensity = 0.4 + progress * 3.0;
-                    const rgbShiftIntensity = 0.0 + progress * 0.0;
-                    const noiseIntensity = 0.0 + progress * 0.0;
-                    const highlightIntensity = 0.5 + progress * 2.0;
+                    const tearingIntensity = this.shaderIntensities.tear + progress *  1.1;
+                    const scanIntensity = this.shaderIntensities.scanLine + progress *  1.1;
+                    const rgbShiftIntensity = this.shaderIntensities.rgbShift + progress *  1.1;
+                    const noiseIntensity = this.shaderIntensities.noise + progress *  1.1;
+                    const highlightIntensity = this.shaderIntensities.highlight + progress * 1.1;
                     const opacity = 1.0 - progress;
 
                     material.uniforms.scanLineIntensity.value = scanIntensity;
