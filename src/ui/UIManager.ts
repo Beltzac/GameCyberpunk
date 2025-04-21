@@ -39,7 +39,7 @@ export class UIManager {
 
         // Highlight: Enhances bright areas with neon glow (0.0-1.0)
         // Detects bright pixels (r+g+b > 1.5) and boosts them with colored highlights
-        highlight: 0.0,
+        highlight: 0.4,
 
         // Scan Lines: Adds horizontal CRT-style scan lines (0.0-5.0)
         scanLine: 5, //Good
