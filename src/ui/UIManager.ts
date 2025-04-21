@@ -249,9 +249,8 @@ export class UIManager {
                     float noise = rand(uv + mod(time, 1.0)) * 0.2 * intensity;
                     color.rgb -= noise;
 
-                    // Apply overall intensity fade (optional, depends on desired effect)
-                    // gl_FragColor = mix(vec4(0.0, 0.0, 0.0, 0.0), vec4(color.rgb, 1.0), intensity);
-                    gl_FragColor = vec4(color.rgb, color.a); // Keep original alpha
+                    // Cyberpunk-style color mixing while preserving transparency
+                    gl_FragColor = vec4(mix(vec3(0.0), color.rgb, intensity), color.a);
                 }
             `,
             transparent: true,
@@ -281,7 +280,7 @@ export class UIManager {
         this.messageContext = context;
 
         // Set font and measure text to determine canvas size
-        const fontSize = 60; // Adjust font size as needed
+        const fontSize = 70; // Adjust font size as needed
         // Use the loaded font
         context.font = `bold ${fontSize}px Thata-Regular, sans-serif`;
         const metrics = context.measureText(message);
@@ -296,7 +295,7 @@ export class UIManager {
 
         // Redraw text on the resized canvas
         context.font = `bold ${fontSize}px Thata-Regular, sans-serif`;
-        context.fillStyle = 'white'; // Text color
+        context.fillStyle = '#00f0ff'; // Neon blue cyberpunk text color
         context.textAlign = 'center';
         context.textBaseline = 'middle';
         context.fillText(message, canvasWidth / 2, canvasHeight / 2);
@@ -352,7 +351,7 @@ export class UIManager {
 
             // Set scale based on texture dimensions to maintain aspect ratio
             const aspect = messageTexture.image.width / messageTexture.image.height;
-            const baseHeight = 1; // Base height for the sprite
+            const baseHeight = 2; // Base height for the sprite
             this.messageSprite.scale.set(baseHeight * aspect, baseHeight, 1);
 
             // Set position - default to a position if none provided
@@ -497,7 +496,6 @@ export class UIManager {
         if (this.messageSprite && (this.messageSprite.material as any).uniforms?.time) {
             const material = (this.messageSprite.material as any);
             material.uniforms.time.value += deltaTime / 1000; // deltaTime is in ms, convert to seconds
-            console.log("Updated glitch shader time:", material.uniforms.time.value);
         }
     }
 
