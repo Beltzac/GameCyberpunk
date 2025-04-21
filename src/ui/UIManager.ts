@@ -1,16 +1,15 @@
 // src/ui/UIManager.ts
 import * as THREE from 'three'; // Import THREE
 import { SceneManager } from '../core/SceneManager'; // Import SceneManager
-import { SoundManager } from '../core/SoundManager'; // Import SoundManager
+import { GameEngine } from '../core/GameEngine';
 
 export class UIManager {
     private debugOverlay: HTMLElement | null = null;
-    private sceneManager: SceneManager | null = null;
-    private soundManager: SoundManager | null = null;
     private readonly initialSceneStorageKey = 'debug_initialScene';
     private fpsCounter: HTMLElement | null = null;
     private lastFrameTime: number = 0;
     private frameCount: number = 0;
+    private gameEngine: GameEngine;
 
     // Properties for 2D message text
     private messages: {
@@ -23,7 +22,7 @@ export class UIManager {
         isFading: boolean;
         isFadeIn: boolean;
     }[] = [];
-    private currentScene: THREE.Scene | null = null; // Reference to the current scene
+
     private messageFontLoaded: boolean = false; // Flag to track font loading
     private messageGlitchMaterial: THREE.ShaderMaterial | null = null;
     private fadeOutDuration: number = 800; // milliseconds - Reduced duration for faster fade
@@ -55,22 +54,30 @@ export class UIManager {
         tear: 0.1, //Good
     };
 
-    constructor() {
+    constructor(GameEngine: GameEngine) {
+        this.gameEngine = GameEngine;
         console.log("UIManager initialized");
         this.createDebugOverlay();
         this.hideDebugOverlay();
         this.lastFrameTime = performance.now();
         this.loadMessageFont(); // Start loading the font
-    }
 
-    public setSoundManager(soundManager: SoundManager): void {
-        this.soundManager = soundManager;
-        this.loadGlitchSounds(); // Load sounds after manager is set
+        this.loadGlitchSounds().then(() => {
+            console.log("Glitch sounds loaded successfully.");
+        }).catch(error => {
+            console.error("Error loading glitch sounds:", error);
+        });
+
+        if (!this.messageGlitchMaterial) {
+            this.createMessageGlitchMaterial();
+        }
+
+        this.populateSceneSelector();
     }
 
     private async loadGlitchSounds(): Promise<void> {
-        if (!this.soundManager || this.glitchSoundLoaded) {
-            if (!this.soundManager) {
+        if (!this.gameEngine.soundManager || this.glitchSoundLoaded) {
+            if (!this.gameEngine.soundManager) {
                 console.warn("SoundManager not available for glitch sounds");
             } else {
                 console.log("Glitch sounds already loaded.");
@@ -92,7 +99,7 @@ export class UIManager {
         ];
 
         const loadPromises = soundFiles.map((file, index) => {
-            return this.soundManager!.loadSound(
+            return this.gameEngine.soundManager!.loadSound(
                 `ui_glitch_${index}`,
                 file
             ).then(() => {
@@ -112,7 +119,7 @@ export class UIManager {
     }
 
     private async playRandomGlitchSound(): Promise<void> {
-        if (!this.glitchSoundLoaded || !this.soundManager || this.glitchSounds.length === 0) return;
+        if (!this.glitchSoundLoaded || !this.gameEngine.soundManager || this.glitchSounds.length === 0) return;
 
         try {
             let randomIndex: number;
@@ -124,30 +131,9 @@ export class UIManager {
                 randomIndex = 0;
             }
             this.lastGlitchSoundIndex = randomIndex;
-            await this.soundManager.playSound(this.glitchSounds[randomIndex], 0.3);
+            await this.gameEngine.soundManager.playSound(this.glitchSounds[randomIndex], 0.3);
         } catch (error) {
             console.error('Failed to play glitch sound:', error);
-        }
-    }
-    // Method to inject SceneManager dependency
-    public setSceneManager(sceneManager: SceneManager): void {
-        this.sceneManager = sceneManager;
-        // Populate scenes once SceneManager is available
-        this.populateSceneSelector();
-    }
-
-
-    // Method to set the current Three.js scene
-    public setCurrentScene(scene: THREE.Scene): void {
-        this.currentScene = scene;
-        // Create glitch material when the scene (and likely renderer) is available
-        if (!this.messageGlitchMaterial) {
-            this.createMessageGlitchMaterial();
-        }
-        // If a message is currently displayed, add it to the new scene
-        // Add all existing messages to new scene
-        for (const message of this.messages) {
-            this.currentScene.add(message.sprite);
         }
     }
 
@@ -442,7 +428,7 @@ void main(){
     // Method to show 2D message text
     public async showMessage(message: string, duration: number = 2000, position?: THREE.Vector3): Promise<THREE.Sprite | null> {
         await this.playRandomGlitchSound();
-        if (!this.currentScene) {
+        if (!this.gameEngine.sceneManager.currentScene) {
             console.error("showMessage: Current scene not set. Cannot show message.");
             return null;
         }
@@ -457,7 +443,7 @@ void main(){
             }
         }
 
-        console.log("showMessage: Creating message sprite", { message, duration, position, scene: this.currentScene });
+        console.log("showMessage: Creating message sprite", { message, duration, position, scene: this.gameEngine.sceneManager.currentScene });
 
         try {
             const { texture: messageTexture, canvas, context } = this.createMessageTexture(message);
@@ -494,7 +480,7 @@ void main(){
             }
 
             // Add to the current scene
-            this.currentScene.add(messageSprite);
+           this.gameEngine.sceneManager.currentScene.threeScene.add(messageSprite);
 
             console.log("showMessage: Sprite created and added to scene", messageSprite);
 
@@ -559,8 +545,8 @@ void main(){
             : [...this.messages];
 
         for (const message of messagesToRemove) {
-            if (message.sprite && this.currentScene) {
-                this.currentScene.remove(message.sprite);
+            if (message.sprite && this.gameEngine.sceneManager.currentScene) {
+                this.gameEngine.sceneManager.currentScene.threeScene.remove(message.sprite);
                 if (message.sprite.material) {
                     if (Array.isArray(message.sprite.material)) {
                         message.sprite.material.forEach(m => m.dispose());
@@ -581,7 +567,7 @@ void main(){
 
 
     private populateSceneSelector(): void {
-        if (!this.sceneManager || !this.debugOverlay) return;
+        if (!this.gameEngine.sceneManager || !this.debugOverlay) return;
 
         const sceneSelect = this.debugOverlay.querySelector<HTMLSelectElement>('#debug-scene-selector');
         if (!sceneSelect) return;
@@ -589,7 +575,7 @@ void main(){
         // Clear existing options
         sceneSelect.innerHTML = '<option value="">-- Select Scene --</option>';
 
-        const sceneNames = this.sceneManager.getSceneNames(); // Need to implement this in SceneManager
+        const sceneNames = this.gameEngine.sceneManager.getSceneNames(); // Need to implement this in SceneManager
         sceneNames.forEach((name: string) => {
             const option = document.createElement('option');
             option.value = name;
@@ -600,14 +586,14 @@ void main(){
     }
 
     private async goToSelectedScene(): Promise<void> {
-        if (!this.sceneManager || !this.debugOverlay) return;
+        if (!this.gameEngine.sceneManager || !this.debugOverlay) return;
         const sceneSelect = this.debugOverlay.querySelector<HTMLSelectElement>('#debug-scene-selector');
         const selectedScene = sceneSelect?.value;
 
         if (selectedScene) {
             console.log("Debug Overlay: Requesting scene change to \"" + selectedScene + "\"");
             // Assuming changeScene handles transitions etc.
-            await this.sceneManager.changeScene(selectedScene);
+            await this.gameEngine.sceneManager.changeScene(selectedScene);
             this.hideDebugOverlay(); // Hide after selection
         } else {
             console.warn("Debug Overlay: No scene selected.");
@@ -773,8 +759,8 @@ public hideScreen(screenId: string): void {
 
 private toggleSound(): void {
     const soundToggle = this.debugOverlay?.querySelector<HTMLInputElement>('#debug-sound-toggle');
-    if (soundToggle && this.soundManager) {
-        this.soundManager.muteAll(soundToggle.checked);
+    if (soundToggle && this.gameEngine.soundManager) {
+        this.gameEngine.soundManager.muteAll(soundToggle.checked);
         console.log("Sound " + (soundToggle.checked ? "muted" : "unmuted"));
     }
 }

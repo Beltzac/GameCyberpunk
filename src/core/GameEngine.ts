@@ -65,13 +65,11 @@ export class GameEngine {
         this.soundManager = new SoundManager(this.camera, this.assetLoader);
         this.gameState = new GameState();
         this.sceneManager = new SceneManager(this.gameState, this);
-        this.uiManager = new UIManager(); // Instantiate UIManager
+        this.uiManager = new UIManager(this); // Instantiate UIManager
         this.inputManager = new InputManager(this.canvas, this.camera, this.sceneManager, this.assetLoader, this.uiManager, this.soundManager); // Pass uiManager and soundManager
 
         // Set renderer in SceneManager for transitions
         this.sceneManager.setRenderer(this.renderer);
-        this.uiManager.setSceneManager(this.sceneManager); // Connect UIManager and SceneManager
-        this.uiManager.setSoundManager(this.soundManager); // Connect UIManager and SoundManager
 
         // Handle window resizing
         window.addEventListener('resize', this.onWindowResize.bind(this), false);

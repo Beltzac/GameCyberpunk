@@ -148,9 +148,6 @@ export class Cena1TrabalhoScene extends Scene {
     }
 
     async onEnter(): Promise<void> {
-        // Set the current scene in the UIManager for 3D text rendering
-        this.gameEngine.uiManager.setCurrentScene(this.threeScene);
-
         // Play ambient sounds
         await this.gameEngine.soundManager.playBackground('city_ambient', 3.0);
         await this.gameEngine.soundManager.playBackground('ac_ambient', 3.0);

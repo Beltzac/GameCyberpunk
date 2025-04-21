@@ -447,6 +447,23 @@ export class Cena2RuaScene extends Scene {
         else if ((clickedObject === this.phoneSprite || clickedObject.name.startsWith("Post")) && this.animationState === 'phoneIdle' && !this.isScrollingPosts) {
             console.log("Phone or Post clicked - starting scroll");
             if (this.postContainer) {
+
+                var messages = [
+                    "Olá, tudo bem?",
+                    "Como você está?",
+                    "Espero que esteja tendo um bom dia!",
+                    "Alguma novidade?",
+                    "O que você está fazendo agora?",
+                ];
+
+                var randomMessage = messages[Math.floor(Math.random() * messages.length)];
+                var randomMessagePosition = new THREE.Vector3(Math.random() * 16 - 8, Math.random() * 4 - 2, 3); // Random position in 3D space
+
+                const messageSpritePapers = await this.gameEngine.uiManager.showMessage(randomMessage, 1000, randomMessagePosition); // Example 3D position
+                if (messageSpritePapers) {
+                    this.threeScene.add(messageSpritePapers);
+                }
+
                 // Add new random post to bottom
                 const newPostIndex = Math.floor(Math.random() * this.postTextures.length);
                 const texture = this.postTextures[newPostIndex];
