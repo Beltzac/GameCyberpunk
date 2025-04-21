@@ -13,16 +13,18 @@ export class UIManager {
     private frameCount: number = 0;
 
     // Properties for 2D message text
-    private messageSprite: THREE.Sprite | null = null;
-    private messageCanvas: HTMLCanvasElement | null = null;
-    private messageContext: CanvasRenderingContext2D | null = null;
-    private messageTexture: THREE.CanvasTexture | null = null;
-    private messageTimeout: number | null = null;
+    private messages: {
+        sprite: THREE.Sprite;
+        texture: THREE.CanvasTexture;
+        canvas: HTMLCanvasElement;
+        context: CanvasRenderingContext2D;
+        timeout: number;
+        fadeStartTime: number;
+        isFading: boolean;
+    }[] = [];
     private currentScene: THREE.Scene | null = null; // Reference to the current scene
     private messageFontLoaded: boolean = false; // Flag to track font loading
     private messageGlitchMaterial: THREE.ShaderMaterial | null = null; // Add this property
-    private isFadingOut: boolean = false;
-    private fadeOutStartTime: number = 0;
     private fadeOutDuration: number = 800; // milliseconds - Reduced duration for faster fade
 
     constructor() {
@@ -51,8 +53,9 @@ export class UIManager {
             this.createMessageGlitchMaterial();
         }
         // If a message is currently displayed, add it to the new scene
-        if (this.messageSprite) {
-            this.currentScene.add(this.messageSprite);
+        // Add all existing messages to new scene
+        for (const message of this.messages) {
+            this.currentScene.add(message.sprite);
         }
     }
 
@@ -287,24 +290,12 @@ export class UIManager {
     }
 
     // Method to create a 2D canvas texture for the message
-    private createMessageTexture(message: string): THREE.CanvasTexture {
-        // Dispose of previous texture and canvas if they exist
-        if (this.messageTexture) {
-            this.messageTexture.dispose();
-        }
-        if (this.messageCanvas) {
-            this.messageCanvas = null;
-            this.messageContext = null;
-        }
-
+    private createMessageTexture(message: string): { texture: THREE.CanvasTexture, canvas: HTMLCanvasElement, context: CanvasRenderingContext2D } {
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         if (!context) {
             throw new Error("Could not get 2D context for message texture");
         }
-
-        this.messageCanvas = canvas;
-        this.messageContext = context;
 
         // Set font and measure text to determine canvas size
         const fontSize = 70; // Adjust font size as needed
@@ -329,8 +320,7 @@ export class UIManager {
 
         const texture = new THREE.CanvasTexture(canvas);
         texture.needsUpdate = true;
-        this.messageTexture = texture;
-        return texture;
+        return { texture, canvas, context };
     }
 
     // Method to show 2D message text
@@ -350,13 +340,10 @@ export class UIManager {
             }
         }
 
-        // Clear any existing message and timeout
-        this.hideMessage();
-
         console.log("showMessage: Creating message sprite", { message, duration, position, scene: this.currentScene });
 
         try {
-            const messageTexture = this.createMessageTexture(message);
+            const { texture: messageTexture, canvas, context } = this.createMessageTexture(message);
 
             // Create a basic sprite material first
             const basicMaterial = new THREE.SpriteMaterial({
@@ -365,90 +352,98 @@ export class UIManager {
                 depthTest: false
             });
 
-            this.messageSprite = new THREE.Sprite(basicMaterial);
+            const messageSprite = new THREE.Sprite(basicMaterial);
 
             // If glitch material is available, assign it after creating the sprite
             if (this.messageGlitchMaterial) {
                 // Clone the glitch material to avoid sharing uniforms
                 const glitchMaterialClone = this.messageGlitchMaterial.clone();
                 glitchMaterialClone.uniforms.tDiffuse.value = messageTexture;
-                (this.messageSprite.material as any) = glitchMaterialClone; // Cast to any to bypass type check
+                (messageSprite.material as any) = glitchMaterialClone;
                 console.log("Applied glitch material to message sprite:", glitchMaterialClone);
             }
 
             // Set scale based on texture dimensions to maintain aspect ratio
             const aspect = messageTexture.image.width / messageTexture.image.height;
             const baseHeight = 2; // Base height for the sprite
-            this.messageSprite.scale.set(baseHeight * aspect, baseHeight, 1);
+            messageSprite.scale.set(baseHeight * aspect, baseHeight, 1);
 
             // Set position - default to a position if none provided
             if (position) {
-                this.messageSprite.position.copy(position);
+                messageSprite.position.copy(position);
             } else {
                 // Default position: slightly in front of the camera's assumed default position
-                this.messageSprite.position.set(0, 0, 0.1); // Adjust Z based on camera setup
+                messageSprite.position.set(0, 0, 0.1); // Adjust Z based on camera setup
             }
 
             // Add to the current scene
-            this.currentScene.add(this.messageSprite);
+            this.currentScene.add(messageSprite);
 
-            console.log("showMessage: Sprite created and added to scene", this.messageSprite);
+            console.log("showMessage: Sprite created and added to scene", messageSprite);
 
-            // Set timeout to start the fade-out effect
-            this.messageTimeout = setTimeout(() => {
-                this.startMessageFadeOut();
-            }, duration) as any;
+            // Create message entry
+            const messageEntry = {
+                sprite: messageSprite,
+                texture: messageTexture,
+                canvas: canvas,
+                context: context,
+                timeout: setTimeout(() => {
+                    this.startMessageFadeOut(messageSprite);
+                }, duration) as any,
+                fadeStartTime: 0,
+                isFading: false
+            };
 
-            return this.messageSprite; // Return the created sprite
+            this.messages.push(messageEntry);
+
+            return messageSprite;
         } catch (error) {
             console.error("Error creating message sprite:", error);
             return null;
         }
     }
 
-    // Method to start the glitch fade-out effect
-    private startMessageFadeOut(): void {
-        if (this.messageSprite && (this.messageSprite.material as any).uniforms?.intensity) {
-            this.isFadingOut = true;
-            this.fadeOutStartTime = performance.now();
+    // Method to start the glitch fade-out effect for a specific message
+    private startMessageFadeOut(sprite: THREE.Sprite): void {
+        const message = this.messages.find(m => m.sprite === sprite);
+        if (!message) return;
+
+        if ((message.sprite.material as any).uniforms?.intensity) {
+            message.isFading = true;
+            message.fadeStartTime = performance.now();
             console.log("UIManager: Starting message fade-out.");
         } else {
-            // If no sprite or glitch material, just hide it normally
-            this.hideMessage();
+            // If no glitch material, just hide it normally
+            this.hideMessage(sprite);
         }
         // Clear the initial display timeout
-        if (this.messageTimeout !== null) {
-            clearTimeout(this.messageTimeout);
-            this.messageTimeout = null;
-        }
-        //this.isFadingOut = false; // Stop any ongoing fade-out animation
+        clearTimeout(message.timeout);
     }
 
-    // Method to hide the 2D message text
-    public hideMessage(): void {
-        if (this.messageSprite && this.currentScene) {
-            this.currentScene.remove(this.messageSprite);
-            if (this.messageSprite.material) {
-                // Dispose of the material, especially if it was cloned
-                if (Array.isArray(this.messageSprite.material)) {
-                    this.messageSprite.material.forEach(m => m.dispose());
-                } else {
-                    this.messageSprite.material.dispose();
+    // Method to hide the 2D message text (all messages if no sprite specified)
+    public hideMessage(sprite?: THREE.Sprite): void {
+        const messagesToRemove = sprite
+            ? this.messages.filter(m => m.sprite === sprite)
+            : [...this.messages];
+
+        for (const message of messagesToRemove) {
+            if (message.sprite && this.currentScene) {
+                this.currentScene.remove(message.sprite);
+                if (message.sprite.material) {
+                    if (Array.isArray(message.sprite.material)) {
+                        message.sprite.material.forEach(m => m.dispose());
+                    } else {
+                        message.sprite.material.dispose();
+                    }
                 }
             }
-            this.messageSprite = null;
-        }
-        if (this.messageTexture) {
-            this.messageTexture.dispose();
-            this.messageTexture = null;
-        }
-        if (this.messageCanvas) {
-            this.messageCanvas = null;
-            this.messageContext = null;
-        }
-        if (this.messageTimeout !== null) {
-            clearTimeout(this.messageTimeout);
-            this.messageTimeout = null;
+            if (message.texture) {
+                message.texture.dispose();
+            }
+            clearTimeout(message.timeout);
+
+            // Remove from messages array
+            this.messages = this.messages.filter(m => m !== message);
         }
     }
 
@@ -537,35 +532,31 @@ export class UIManager {
         this.updatePerformanceMetrics(updateTime, objectCount);
         this.updateScenePerformanceMetrics(scenePerformanceData);
 
-        // Update message glitch shader time uniform if the message sprite is using it and has uniforms
-        if (this.messageSprite && (this.messageSprite.material as any).uniforms) {
-            const material = (this.messageSprite.material as any);
-            // Update time uniform
-            if (material.uniforms.time) {
-                 material.uniforms.time.value += deltaTime / 1000; // deltaTime is in ms, convert to seconds
-            }
+        // Update message glitch shader time uniforms for all messages
+        for (const message of this.messages) {
+            if ((message.sprite.material as any).uniforms) {
+                const material = (message.sprite.material as any);
+                // Update time uniform
+                if (material.uniforms.time) {
+                    material.uniforms.time.value += deltaTime / 1000; // deltaTime is in ms, convert to seconds
+                }
 
-            //console.log("UIManager: Updated message shader time uniform:", material.uniforms.time.value);
+                // Handle fade-out animation
+                if (message.isFading && material.uniforms?.intensity) {
+                    const elapsed = performance.now() - message.fadeStartTime;
+                    const progress = Math.min(elapsed / this.fadeOutDuration, 1.0);
+                    // Dramatically increase intensity and add randomness for stronger glitch
+                    const intensity = 0.4 + progress * 5.0; // Animate from 0.4 to 5.4
+                    material.uniforms.intensity.value = intensity;
+                    material.uniforms.time.value += deltaTime / 1000; // Ensure time keeps updating
 
-            // Handle fade-out animation
-            // Handle fade-out animation
-            if (this.isFadingOut && material.uniforms?.intensity) {
-                const elapsed = performance.now() - this.fadeOutStartTime;
-                const progress = Math.min(elapsed / this.fadeOutDuration, 1.0);
-                // Dramatically increase intensity and add randomness for stronger glitch
-                const intensity = 0.4 + progress * 5.0; // Animate from 0.4 to 5.4
-                material.uniforms.intensity.value = intensity;
-                material.uniforms.time.value += deltaTime / 1000; // Ensure time keeps updating
+                    // Force uniforms update
+                    material.needsUpdate = true;
 
-                // Force uniforms update
-                material.needsUpdate = true;
-
-                //console.log("UIManager: Fade-out progress:", progress, "Intensity:", intensity);
-
-                if (progress >= 1.0) {
-                    // Fade-out complete, hide the message
-                    this.hideMessage();
-                    this.isFadingOut = false;
+                    if (progress >= 1.0) {
+                        // Fade-out complete, hide the message
+                        this.hideMessage(message.sprite);
+                    }
                 }
             }
         }
