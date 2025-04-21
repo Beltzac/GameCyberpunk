@@ -212,7 +212,8 @@ export class UIManager {
         this.messageGlitchMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 time: { value: 0.0 },
-                intensity: { value: 0.4 }, // Increased base intensity
+                intensity: { value: 0.4 }, // Scan line intensity
+                opacity: { value: 1.0 }, // Message opacity
                 tDiffuse: { value: null }
             },
             vertexShader: [
@@ -222,67 +223,68 @@ export class UIManager {
                 "    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);",
                 "}"
             ].join("\n"),
-            fragmentShader: [
-                "uniform float time;",
-                "uniform float intensity;",
-                "uniform sampler2D tDiffuse;",
-                "varying vec2 vUv;",
+            fragmentShader: `
+                uniform float time;
+                uniform float intensity;
+                uniform float opacity;
+                uniform sampler2D tDiffuse;
+                varying vec2 vUv;
 
-                "// Random number generator",
-                "float random(vec2 p) {",
-                "    vec2 k = vec2(",
-                "        23.14069263277926, // e^pi",
-                "        2.665144142690225 // 2^sqrt(2)",
-                "    );",
-                "    return fract(cos(dot(p, k)) * 12345.6789);",
-                "}",
+                // Random number generator
+                float random(vec2 p) {
+                    vec2 k = vec2(
+                        23.14069263277926, // e^pi
+                        2.665144142690225 // 2^sqrt(2)
+                    );
+                    return fract(cos(dot(p, k)) * 12345.6789);
+                }
 
-                "// RGB separation effect",
-                "vec3 rgbShift(vec2 p, float amount) {",
-                "    float r = texture2D(tDiffuse, p + vec2(amount * 0.05, 0.0)).r;",
-                "    float g = texture2D(tDiffuse, p + vec2(-amount * 0.03, 0.0)).g;",
-                "    float b = texture2D(tDiffuse, p + vec2(amount * 0.02, amount * 0.02)).b;",
-                "    return vec3(r, g, b);",
-                "}",
+                // RGB separation effect
+                vec3 rgbShift(vec2 p, float amount) {
+                    float r = texture2D(tDiffuse, p + vec2(amount * 0.05, 0.0)).r;
+                    float g = texture2D(tDiffuse, p + vec2(-amount * 0.03, 0.0)).g;
+                    float b = texture2D(tDiffuse, p + vec2(amount * 0.02, amount * 0.02)).b;
+                    return vec3(r, g, b);
+                }
 
-                "// Scan line effect",
-                "float scanLine(float y, float t) {",
-                "    return sin(y * 800.0 + t * 10.0) * 0.1 * intensity;",
-                "}",
+                // Scan line effect
+                float scanLine(float y, float t) {
+                    return sin(y * 800.0 + t * 10.0) * 0.1 * intensity;
+                }
 
-                "void main() {",
-                "    vec2 uv = vUv;",
-                "    vec4 baseColor = texture2D(tDiffuse, uv);",
-                "    if (baseColor.a == 0.0) { discard; }", // Skip transparent fragments
-                "    ",
-                "    // Time-based distortion",
-                "    float t = time * 2.0;",
-                "    ",
-                "    // Screen tearing effect",
-                "    if (random(vec2(t, uv.y)) > 0.99) {",
-                "        uv.x += random(vec2(t, uv.y)) * 0.2 * intensity;",
-                "    }",
+                void main() {
+                    vec2 uv = vUv;
+                    vec4 baseColor = texture2D(tDiffuse, uv);
+                    if (baseColor.a == 0.0) { discard; } // Skip transparent fragments
 
-                "    // Get base color with distortion",
-                "    vec3 color = rgbShift(uv, intensity * 0.5);",
+                    // Time-based distortion
+                    float t = time * 2.0;
 
-                "    // Scan lines",
-                "    color -= scanLine(uv.y, t);",
+                    // Screen tearing effect
+                    if (random(vec2(t, uv.y)) > 0.99) {
+                        uv.x += random(vec2(t, uv.y)) * 0.2 * intensity;
+                    }
 
-                "    // Digital noise",
-                "    float noise = random(uv + mod(t, 1.0)) * 0.3 * intensity;",
-                "    color += noise - 0.15;",
+                    // Get base color with distortion
+                    vec3 color = rgbShift(uv, intensity * 0.5);
 
-                "    // Apply intensity",
-                "    color = mix(baseColor.rgb, color, intensity * 0.7);",
+                    // Scan lines
+                    color -= scanLine(uv.y, t);
 
-                "    // Bright neon highlights",
-                "    float highlight = max(0.0, color.r + color.g + color.b - 1.5);",
-                "    color += vec3(highlight * 0.5, highlight * 0.3, highlight * 0.7);",
+                    // Digital noise
+                    float noise = random(uv + mod(t, 1.0)) * 0.3 * intensity;
+                    color += noise - 0.15;
 
-                "    gl_FragColor = vec4(color, baseColor.a);",
-                "}"
-            ].join("\n"),
+                    // Apply intensity
+                    color = mix(baseColor.rgb, color, intensity * 0.7);
+
+                    // Bright neon highlights
+                    float highlight = max(0.0, color.r + color.g + color.b - 1.5);
+                    color += vec3(highlight * 0.5, highlight * 0.3, highlight * 0.7);
+
+                    gl_FragColor = vec4(color, baseColor.a * opacity);
+                }
+            `,
             transparent: true,
             depthTest: false
         });
@@ -545,13 +547,17 @@ export class UIManager {
                 if (message.isFading && material.uniforms?.intensity) {
                     const elapsed = performance.now() - message.fadeStartTime;
                     const progress = Math.min(elapsed / this.fadeOutDuration, 1.0);
-                    // Dramatically increase intensity and add randomness for stronger glitch
-                    const intensity = 0.4 + progress * 5.0; // Animate from 0.4 to 5.4
-                    material.uniforms.intensity.value = intensity;
+                    // Intensify scan lines while fading out
+                    const scanIntensity = 0.4 + progress * 3.0; // Stronger scan lines
+                    const opacity = 1.0 - progress; // Fade transparency
+
+                    material.uniforms.intensity.value = scanIntensity;
+                    material.uniforms.opacity.value = opacity;
                     material.uniforms.time.value += deltaTime / 1000; // Ensure time keeps updating
 
                     // Force uniforms update
                     material.needsUpdate = true;
+                    material.transparent = true;
 
                     if (progress >= 1.0) {
                         // Fade-out complete, hide the message
