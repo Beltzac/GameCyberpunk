@@ -25,8 +25,13 @@ export class UIManager {
     }[] = [];
     private currentScene: THREE.Scene | null = null; // Reference to the current scene
     private messageFontLoaded: boolean = false; // Flag to track font loading
-    private messageGlitchMaterial: THREE.ShaderMaterial | null = null; // Add this property
+    private messageGlitchMaterial: THREE.ShaderMaterial | null = null;
     private fadeOutDuration: number = 800; // milliseconds - Reduced duration for faster fade
+
+    // Glitch sound properties
+    private glitchSounds: string[] = [];
+    private glitchSoundLoaded: boolean = false;
+    private lastGlitchSoundIndex: number = -1;
 
     // Shader effect constants
     private readonly shaderIntensities = {
@@ -57,6 +62,73 @@ export class UIManager {
         this.lastFrameTime = performance.now();
         this.loadMessageFont(); // Start loading the font
     }
+
+    public setSoundManager(soundManager: SoundManager): void {
+        this.soundManager = soundManager;
+        this.loadGlitchSounds(); // Load sounds after manager is set
+    }
+
+    private async loadGlitchSounds(): Promise<void> {
+        if (!this.soundManager || this.glitchSoundLoaded) {
+            if (!this.soundManager) {
+                console.warn("SoundManager not available for glitch sounds");
+            } else {
+                console.log("Glitch sounds already loaded.");
+            }
+            return;
+        }
+
+        const soundFiles = [
+            'sounds/glitch_1.mp3',
+            'sounds/glitch_2.mp3',
+            'sounds/glitch_3.mp3',
+            'sounds/glitch_4.mp3',
+            'sounds/glitch_5.mp3',
+            'sounds/glitch_6.mp3',
+            'sounds/glitch_7.mp3',
+            'sounds/glitch_8.mp3',
+            'sounds/glitch_9.mp3',
+            'sounds/glitch_10.mp3'
+        ];
+
+        const loadPromises = soundFiles.map((file, index) => {
+            return this.soundManager!.loadSound(
+                `ui_glitch_${index}`,
+                file
+            ).then(() => {
+                this.glitchSounds.push(`ui_glitch_${index}`);
+                return true;
+            }).catch(error => {
+                console.error(`Failed to load glitch sound ${file}:`, error);
+                return false;
+            });
+        });
+
+        Promise.all(loadPromises).then(results => {
+            if (results.some(r => r)) {
+                this.glitchSoundLoaded = true;
+            }
+        });
+    }
+
+    private async playRandomGlitchSound(): Promise<void> {
+        if (!this.glitchSoundLoaded || !this.soundManager || this.glitchSounds.length === 0) return;
+
+        try {
+            let randomIndex: number;
+            if (this.glitchSounds.length > 1) {
+                do {
+                    randomIndex = Math.floor(Math.random() * this.glitchSounds.length);
+                } while (randomIndex === this.lastGlitchSoundIndex);
+            } else {
+                randomIndex = 0;
+            }
+            this.lastGlitchSoundIndex = randomIndex;
+            await this.soundManager.playSound(this.glitchSounds[randomIndex], 0.3);
+        } catch (error) {
+            console.error('Failed to play glitch sound:', error);
+        }
+    }
     // Method to inject SceneManager dependency
     public setSceneManager(sceneManager: SceneManager): void {
         this.sceneManager = sceneManager;
@@ -64,9 +136,6 @@ export class UIManager {
         this.populateSceneSelector();
     }
 
-    public setSoundManager(soundManager: SoundManager): void {
-        this.soundManager = soundManager;
-    }
 
     // Method to set the current Three.js scene
     public setCurrentScene(scene: THREE.Scene): void {
@@ -372,6 +441,7 @@ void main(){
 
     // Method to show 2D message text
     public async showMessage(message: string, duration: number = 2000, position?: THREE.Vector3): Promise<THREE.Sprite | null> {
+        await this.playRandomGlitchSound();
         if (!this.currentScene) {
             console.error("showMessage: Current scene not set. Cannot show message.");
             return null;
@@ -464,14 +534,16 @@ void main(){
     }
 
     // Method to start the glitch fade-out effect for a specific message
-    private startMessageFadeOut(sprite: THREE.Sprite): void {
+    private async startMessageFadeOut(sprite: THREE.Sprite): Promise<void> {
         const message = this.messages.find(m => m.sprite === sprite);
         if (!message) return;
 
         if ((message.sprite.material as any).uniforms?.scanLineIntensity) {
             message.isFading = true;
+            message.isFadeIn = false;
             message.fadeStartTime = performance.now();
             console.log("UIManager: Starting message fade-out.");
+            await this.playRandomGlitchSound();
         } else {
             // If no glitch material, just hide it normally
             this.hideMessage(sprite);

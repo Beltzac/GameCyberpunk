@@ -71,6 +71,7 @@ export class GameEngine {
         // Set renderer in SceneManager for transitions
         this.sceneManager.setRenderer(this.renderer);
         this.uiManager.setSceneManager(this.sceneManager); // Connect UIManager and SceneManager
+        this.uiManager.setSoundManager(this.soundManager); // Connect UIManager and SoundManager
 
         // Handle window resizing
         window.addEventListener('resize', this.onWindowResize.bind(this), false);
