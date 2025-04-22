@@ -184,10 +184,10 @@ export class SoundManager {
 
     public muteAll(isMuted: boolean): void {
         if (isMuted) {
-            this.sounds.forEach((sound, name) => {
+            this.sounds.forEach((sound) => {
                 sound.setVolume(0);
             });
-            this.backgroundSounds.forEach((sound, name) => {
+            this.backgroundSounds.forEach((sound) => {
                 sound.setVolume(0);
             });
         } else {

@@ -27,7 +27,6 @@ export class VisualEffectManager {
         const velocities = new Float32Array(particleCount * 3);
 
         const spawnAreaWidth = 20;
-        const spawnAreaDepth = 15;
         const spawnHeight = 10;
         const baseFallSpeed = 0.10;
         const speedVariation = 0.20;
@@ -89,6 +88,7 @@ export class VisualEffectManager {
         for (let i = 0; i < positions.length; i += 3) {
             positions[i] += velocities[i] * effectiveDeltaTime * 60;
             positions[i + 1] += velocities[i + 1] * effectiveDeltaTime * 60;
+            positions[i + 2] += velocities[i + 2] * effectiveDeltaTime * 60;
 
             if (positions[i + 1] < fallLimit) {
                 positions[i + 1] = resetHeight + Math.random() * 5;
@@ -99,7 +99,7 @@ export class VisualEffectManager {
         rainGeometry.attributes.position.needsUpdate = true;
     }
 
-    public static createDustMotesEffect(scene: THREE.Scene, camera: any): DustMotesEffect {
+    public static createDustMotesEffect(scene: THREE.Scene, camera: THREE.OrthographicCamera): DustMotesEffect {
         const dustGeometry = new THREE.BufferGeometry();
         const dustMaterial = new THREE.PointsMaterial({
             color: 0xffffee,
@@ -156,7 +156,7 @@ export class VisualEffectManager {
         dustGeometry: THREE.BufferGeometry,
         velocities: Float32Array,
         deltaTime: number,
-        camera: any
+        camera: THREE.OrthographicCamera
     ): void {
         const positions = dustGeometry.attributes.position.array as Float32Array;
         const bounds = {

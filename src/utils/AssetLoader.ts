@@ -17,7 +17,7 @@ export class AssetLoader {
     private ktx2Loader: KTX2Loader;
 
     private _isLoadComplete: boolean = false; // Flag to track initial load completion
-    private pendingPromises: Promise<any>[] = []; // Track all pending load operations
+    private pendingPromises: Promise<THREE.Texture | AudioBuffer | THREE.Group>[] = []; // Track all pending load operations
 
     constructor(private gameEngine: GameEngine) {
         this.defaultTexture = this.createDefaultTexture();
@@ -49,7 +49,7 @@ export class AssetLoader {
             .setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/libs/basis/')
             .detectSupport(this.gameEngine.getRenderer());
         // Create default silent audio buffer
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)(); // eslint-disable-line @typescript-eslint/no-explicit-any
         this.defaultAudioBuffer = audioContext.createBuffer(1, 1, 22050); // 1 channel, 1 sample, 22.05kHz
     }
 
@@ -80,7 +80,7 @@ export class AssetLoader {
             return this.textureCache.get(url)!;
         }
 
-        const loadPromise = new Promise<THREE.Texture>((resolve, reject) => {
+        const loadPromise = new Promise<THREE.Texture>((resolve) => {
             // Handle paths that may or may not already include 'assets/'
             const cleanPath = url.startsWith('assets/') ? url : `assets/${url}`;
             console.log(`AssetLoader: Loading texture from resolved path: ${cleanPath}`);
@@ -124,7 +124,7 @@ export class AssetLoader {
             return this.audioCache.get(url)!;
         }
 
-        const loadPromise = new Promise<AudioBuffer>((resolve, reject) => {
+        const loadPromise = new Promise<AudioBuffer>((resolve) => {
             // Handle paths that may or may not already include 'assets/'
             const cleanPath = url.startsWith('assets/') ? url : `assets/${url}`;
             console.log(`AssetLoader: Loading audio from resolved path: ${cleanPath}`);
@@ -226,9 +226,9 @@ export class AssetLoader {
     }
 
     // Method to load multiple assets, perhaps for a specific scene
-    public async loadAssets(assetList: { type: string, url: string, name: string }[]): Promise<Map<string, any>> {
+    public async loadAssets(assetList: { type: string, url: string, name: string }[]): Promise<Map<string, any>> { // eslint-disable-line @typescript-eslint/no-explicit-any
         console.log("AssetLoader: Loading multiple assets (placeholder)");
-        const loadedAssets = new Map<string, any>();
+        const loadedAssets = new Map<string, any>(); // eslint-disable-line @typescript-eslint/no-explicit-any
         // Implement logic to iterate through assetList and call appropriate load methods
         for (const asset of assetList) {
             try {

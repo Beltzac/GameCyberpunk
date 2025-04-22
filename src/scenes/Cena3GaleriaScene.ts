@@ -4,7 +4,6 @@ import { Scene } from '../core/Scene';
 import { AssetLoader } from '../utils/AssetLoader';
 import { SceneManager } from '../core/SceneManager';
 import { GameEngine } from '../core/GameEngine';
-import { Easing } from '../utils/Easing';
 import { HologramHelper } from '../utils/HologramHelper';
 import { BobCharacter, MartaCharacter, WalkingCharacter } from '../objects/WalkingCharacter';
 
@@ -92,10 +91,10 @@ export class Cena3GaleriaScene extends Scene {
             //const otherCharSprite = this.createCharacterSprite(otherCharTexture, 3, 0);
             //this.characterSprites.push(kairosSprite, otherCharSprite);
 
-            this.bobCharacter = await BobCharacter.create(-2, -2, 0.10, -5, 5, this.gameEngine.soundManager, this.assetLoader);
+            this.bobCharacter = await BobCharacter.create(this.gameEngine, -2, -2, 0.10, -5, 5);
             this.threeScene.add(this.bobCharacter.getSprite());
 
-            this.martaCharacter = await MartaCharacter.create(2, -2, 0.10, -5, 5, this.gameEngine.soundManager, this.assetLoader);
+            this.martaCharacter = await MartaCharacter.create(this.gameEngine, 2, -2, 0.10, -5, 5);
             this.threeScene.add(this.martaCharacter.getSprite());
 
             // Load decision button textures
@@ -260,7 +259,7 @@ export class Cena3GaleriaScene extends Scene {
         }
     }
 
-    render(renderer: THREE.WebGLRenderer): void {
+    render(): void {
         // Custom rendering if needed
     }
 
@@ -271,11 +270,20 @@ export class Cena3GaleriaScene extends Scene {
 
         // Handle model clicks
         if (this.plantaPack && this.isObjectInHierarchy(clickedObject, this.plantaPack as THREE.Object3D)) {
-            this.applyRotationImpulse(this.currentRotationVelocityXPlanta, this.currentRotationVelocityYPlanta);
+            const randomY = Math.random() < 0.5 ? -1 : 1;
+            const randomX = Math.random() < 0.5 ? -1 : 1;
+            this.currentRotationVelocityYPlanta += this.rotationImpulse * randomY;
+            this.currentRotationVelocityXPlanta += this.tiltImpulse * randomX;
         } else if (this.mesaPack && this.isObjectInHierarchy(clickedObject, this.mesaPack as THREE.Object3D)) {
-            this.applyRotationImpulse(this.currentRotationVelocityXMesa, this.currentRotationVelocityYMesa);
+            const randomY = Math.random() < 0.5 ? -1 : 1;
+            const randomX = Math.random() < 0.5 ? -1 : 1;
+            this.currentRotationVelocityYMesa += this.rotationImpulse * randomY;
+            this.currentRotationVelocityXMesa += this.tiltImpulse * randomX;
         } else if (this.vitrolaPack && this.isObjectInHierarchy(clickedObject, this.vitrolaPack as THREE.Object3D)) {
-            this.applyRotationImpulse(this.currentRotationVelocityXVitrola, this.currentRotationVelocityYVitrola);
+            const randomY = Math.random() < 0.5 ? -1 : 1;
+            const randomX = Math.random() < 0.5 ? -1 : 1;
+            this.currentRotationVelocityYVitrola += this.rotationImpulse * randomY;
+            this.currentRotationVelocityXVitrola += this.tiltImpulse * randomX;
         } else if (this.bobCharacter && clickedObject === this.bobCharacter.getSprite()) {
             this.bobCharacter.playHurtSound();
         } else if (this.martaCharacter && clickedObject === this.martaCharacter.getSprite()) {
@@ -290,13 +298,6 @@ export class Cena3GaleriaScene extends Scene {
             this.currentSelection = 1;
             await this.transitionToNextScene('other_character');
         }
-    }
-
-    private applyRotationImpulse(velocityX: number, velocityY: number): void {
-        const randomY = Math.random() < 0.5 ? -1 : 1;
-        const randomX = Math.random() < 0.5 ? -1 : 1;
-        velocityY += this.rotationImpulse * randomY;
-        velocityX += this.tiltImpulse * randomX;
     }
 
     private async transitionToNextScene(character: string): Promise<void> {

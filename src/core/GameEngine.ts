@@ -9,6 +9,9 @@ import { createGameLoop } from '@wmcmurray/game-loop-js';
 
 const CAMERA_FRUSTUM_SIZE = 8; // Centralized camera frustum size
 const TARGET_FPS = 60;
+interface GameLoop {
+    loop: () => void;
+}
 
 export class GameEngine {
     private canvas: HTMLCanvasElement;
@@ -24,7 +27,7 @@ export class GameEngine {
     public uiManager: UIManager; // Add UIManager property
     public assetLoader: AssetLoader;
     public soundManager: SoundManager;
-    private gameLoop: any;
+    private gameLoop!: GameLoop; // TODO: Specify a more specific type for gameLoop if possible
     private clock: THREE.Clock;
     private animationFrameId: number | null = null;
 
@@ -136,7 +139,7 @@ export class GameEngine {
                 });
 
                 // 2. Update InputManager (handles cursor position and click animations)
-                this.inputManager.update(deltaTime);
+                this.inputManager.update();
 
                 // Get scene-specific performance data
                 const scenePerformanceData = currentScene.getPerformanceData();

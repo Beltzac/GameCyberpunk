@@ -44,8 +44,8 @@ export class StartMenuScene extends Scene {
             const context = canvas.getContext('2d');
             if (context) {
                 // Load font
-                const fontFace = new (window as any).FontFace('Thata-Regular', 'url(assets/fonts/Thata-Regular-2024-08-15.ttf)');
-                await (document as any).fonts.add(fontFace);
+                const fontFace = new (window as any).FontFace('Thata-Regular', 'url(assets/fonts/Thata-Regular-2024-08-15.ttf)'); // eslint-disable-line @typescript-eslint/no-explicit-any
+                await (document as any).fonts.add(fontFace); // eslint-disable-line @typescript-eslint/no-explicit-any
                 await fontFace.load();
 
                 context.fillStyle = '#ffcc00';
@@ -207,7 +207,7 @@ export class StartMenuScene extends Scene {
         // No cleanup needed
     }
 
-    update(deltaTime: number): void {
+    update(): void {
         this.performanceData = {}; // Clear previous frame's data
 
         // Update particles
@@ -253,7 +253,7 @@ export class StartMenuScene extends Scene {
         this.performanceData['Particle Update'] = performance.now() - particleUpdateTime;
     }
 
-    render(renderer: THREE.WebGLRenderer): void {
+    render(): void {
         // No custom rendering needed
     }
 

@@ -1,6 +1,5 @@
 // src/ui/UIManager.ts
 import * as THREE from 'three'; // Import THREE
-import { SceneManager } from '../core/SceneManager'; // Import SceneManager
 import { GameEngine } from '../core/GameEngine';
 
 export class UIManager {
@@ -273,8 +272,8 @@ export class UIManager {
     // Method to load the message font
     private async loadMessageFont(): Promise<void> {
         try {
-            const fontFace = new (window as any).FontFace('Thata-Regular', 'url(assets/fonts/Thata-Regular-2024-08-15.ttf)');
-            await (document as any).fonts.add(fontFace);
+            const fontFace = new (window as any).FontFace('Thata-Regular', 'url(assets/fonts/Thata-Regular-2024-08-15.ttf)'); // eslint-disable-line @typescript-eslint/no-explicit-any
+            await (document as any).fonts.add(fontFace); // eslint-disable-line @typescript-eslint/no-explicit-any
             await fontFace.load();
             this.messageFontLoaded = true;
             console.log("Message font 'Thata-Regular' loaded successfully.");
@@ -462,7 +461,7 @@ void main(){
                 // Clone the glitch material to avoid sharing uniforms
                 const glitchMaterialClone = this.messageGlitchMaterial.clone();
                 glitchMaterialClone.uniforms.tDiffuse.value = messageTexture;
-                (messageSprite.material as any) = glitchMaterialClone;
+                (messageSprite.material as any) = glitchMaterialClone; // eslint-disable-line @typescript-eslint/no-explicit-any
                 console.log("Applied glitch material to message sprite:", glitchMaterialClone);
             }
 
@@ -492,15 +491,15 @@ void main(){
                 context: context,
                 timeout: setTimeout(() => {
                     this.startMessageFadeOut(messageSprite);
-                }, duration) as any,
+                }, duration) as any, // eslint-disable-line @typescript-eslint/no-explicit-any
                 fadeStartTime: performance.now(),
                 isFading: true, // Start with fade-in
                 isFadeIn: true  // Mark as fade-in phase
             };
 
             // Set initial fade-in values
-            if ((messageSprite.material as any).uniforms) {
-                const material = (messageSprite.material as any);
+            if ((messageSprite.material as any).uniforms) { // eslint-disable-line @typescript-eslint/no-explicit-any
+                const material = (messageSprite.material as any); // eslint-disable-line @typescript-eslint/no-explicit-any
                 material.uniforms.scanLineIntensity.value = 0;
                 material.uniforms.rgbShiftIntensity.value = 0;
                 material.uniforms.tearIntensity.value = 0;
@@ -524,7 +523,7 @@ void main(){
         const message = this.messages.find(m => m.sprite === sprite);
         if (!message) return;
 
-        if ((message.sprite.material as any).uniforms?.scanLineIntensity) {
+        if ((message.sprite.material as any).uniforms?.scanLineIntensity) { // eslint-disable-line @typescript-eslint/no-explicit-any
             message.isFading = true;
             message.isFadeIn = false;
             message.fadeStartTime = performance.now();
@@ -652,8 +651,8 @@ void main(){
 
         // Update message glitch shader time uniforms for all messages
         for (const message of this.messages) {
-            if ((message.sprite.material as any).uniforms) {
-                const material = (message.sprite.material as any);
+            if ((message.sprite.material as any).uniforms) { // eslint-disable-line @typescript-eslint/no-explicit-any
+                const material = (message.sprite.material as any); // eslint-disable-line @typescript-eslint/no-explicit-any
                 // Update time uniform
                 if (material.uniforms.time) {
                     material.uniforms.time.value += deltaTime / 1000; // deltaTime is in ms, convert to seconds

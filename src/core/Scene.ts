@@ -28,7 +28,7 @@ export abstract class Scene {
     abstract handleClick(intersects: THREE.Intersection[]): Promise<void>;
 
     // Handle mouse move events on scene objects (optional)
-    handleMouseMove(intersects: THREE.Intersection[]): void {
+    handleMouseMove(_intersects: THREE.Intersection[]): void { // eslint-disable-line @typescript-eslint/no-unused-vars
         // Default empty implementation
     }
 

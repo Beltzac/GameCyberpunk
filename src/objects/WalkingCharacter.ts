@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { Easing } from '../utils/Easing';
-import { SoundManager } from '../core/SoundManager';
-import { AssetLoader } from '../utils/AssetLoader';
+import { GameEngine } from '../core/GameEngine';
 
 export abstract class WalkingCharacter {
+    protected gameEngine: GameEngine;
     protected sprite: THREE.Sprite;
     protected walkTextures: THREE.Texture[] = [];
     protected backTextures: THREE.Texture[] = [];
@@ -17,40 +17,35 @@ export abstract class WalkingCharacter {
     protected leftBound: number;
     protected rightBound: number;
     protected baseY: number;
-    protected soundManager: SoundManager;
     protected lastStepSound: number = 0;
     protected gender: 'male' | 'female';
-    protected assetLoader: AssetLoader;
 
     constructor(
+        gameEngine: GameEngine,
         startX: number,
         startY: number,
         speed: number,
         leftBound: number,
         rightBound: number,
-        soundManager: SoundManager,
-        gender: 'male' | 'female',
-        assetLoader: AssetLoader
+        gender: 'male' | 'female'
     ) {
         this.speed = speed;
         this.leftBound = leftBound;
         this.rightBound = rightBound;
         this.baseY = startY;
-        this.soundManager = soundManager;
         this.gender = gender;
+        this.gameEngine = gameEngine;
 
         // Load sounds
-        soundManager.loadSound('step1', 'assets/sounds/step_1.mp3');
-        soundManager.loadSound('step2', 'assets/sounds/step_2.mp3');
-        soundManager.loadSound('male_hurt', 'assets/cena_3_galeria/sounds/male_hurt.mp3');
-        soundManager.loadSound('female_hurt', 'assets/cena_3_galeria/sounds/female_hurt.mp3');
-        soundManager.loadSound('surprise1', 'assets/cena_3_galeria/sounds/surprise_1.mp3');
-        soundManager.loadSound('surprise2', 'assets/cena_3_galeria/sounds/surprise_2.mp3');
-        soundManager.loadSound('surprise3', 'assets/cena_3_galeria/sounds/surprise_3.mp3');
-        soundManager.loadSound('surprise4', 'assets/cena_3_galeria/sounds/surprise_4.mp3');
-        soundManager.loadSound('surprise5', 'assets/cena_3_galeria/sounds/surprise_5.mp3');
-
-        this.assetLoader = assetLoader;
+        this.gameEngine.soundManager.loadSound('step1', 'assets/sounds/step_1.mp3');
+        this.gameEngine.soundManager.loadSound('step2', 'assets/sounds/step_2.mp3');
+        this.gameEngine.soundManager.loadSound('male_hurt', 'assets/cena_3_galeria/sounds/male_hurt.mp3');
+        this.gameEngine.soundManager.loadSound('female_hurt', 'assets/cena_3_galeria/sounds/female_hurt.mp3');
+        this.gameEngine.soundManager.loadSound('surprise1', 'assets/cena_3_galeria/sounds/surprise_1.mp3');
+        this.gameEngine.soundManager.loadSound('surprise2', 'assets/cena_3_galeria/sounds/surprise_2.mp3');
+        this.gameEngine.soundManager.loadSound('surprise3', 'assets/cena_3_galeria/sounds/surprise_3.mp3');
+        this.gameEngine.soundManager.loadSound('surprise4', 'assets/cena_3_galeria/sounds/surprise_4.mp3');
+        this.gameEngine.soundManager.loadSound('surprise5', 'assets/cena_3_galeria/sounds/surprise_5.mp3');
 
         const material = new THREE.SpriteMaterial({
             map: this.walkTextures[0] || new THREE.Texture(),
@@ -74,7 +69,7 @@ export abstract class WalkingCharacter {
 
     public playHurtSound(): void {
         const sound = this.gender === 'male' ? 'male_hurt' : 'female_hurt';
-        this.soundManager.playSound(sound, 0.8);
+        this.gameEngine.soundManager.playSound(sound, 0.8);
     }
 
     public update(deltaTime: number): void {
@@ -87,7 +82,7 @@ export abstract class WalkingCharacter {
                 this.sprite.position.x += this.speed * this.direction;
 
                 const stepSound = this.lastStepSound === 1 ? 'step2' : 'step1';
-                this.soundManager.playSound(stepSound, 0.3);
+                this.gameEngine.soundManager.playSound(stepSound, 0.3);
                 this.lastStepSound = this.lastStepSound === 1 ? 2 : 1;
 
                 const bobPhase = this.walkCycle / this.walkTextures.length;
@@ -114,7 +109,7 @@ export abstract class WalkingCharacter {
                     this.updateTexture(this.walkTextures.length + backIndex);
 
                     const surpriseSound = `surprise${Math.floor(Math.random() * 5) + 1}`;
-                    this.soundManager.playSound(surpriseSound, 0.5);
+                    this.gameEngine.soundManager.playSound(surpriseSound, 0.5);
                 }
             }
         } else {
@@ -147,56 +142,42 @@ export abstract class WalkingCharacter {
             material.map.needsUpdate = true;
         }
     }
-
-    public static async create(
-        startX: number,
-        startY: number,
-        speed: number,
-        leftBound: number,
-        rightBound: number,
-        soundManager: SoundManager,
-        assetLoader: AssetLoader
-    ): Promise<WalkingCharacter> {
-        throw new Error('create() must be implemented by subclasses');
-    }
 }
 
 export class BobCharacter extends WalkingCharacter {
     constructor(
         startX: number,
         startY: number,
-        speed: number = 0.10,
-        leftBound: number = -5,
-        rightBound: number = 5,
-        soundManager: SoundManager,
-        assetLoader: AssetLoader
+        speed: number,
+        leftBound: number,
+        rightBound: number,
+        gameEngine: GameEngine,
     ) {
-        super(startX, startY, speed, leftBound, rightBound, soundManager, 'male', assetLoader);
+        super(gameEngine, startX, startY, speed, leftBound, rightBound, 'male');
     }
 
     protected async loadTextures(): Promise<void> {
         this.walkTextures = [
-            await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_walk_1.png'),
-            await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_walk_2.png'),
-            await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_walk_3.png'),
-            await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_walk_4.png')
+            await this.gameEngine.assetLoader.loadTexture('assets/cena_3_galeria/bob_walk_1.png'),
+            await this.gameEngine.assetLoader.loadTexture('assets/cena_3_galeria/bob_walk_2.png'),
+            await this.gameEngine.assetLoader.loadTexture('assets/cena_3_galeria/bob_walk_3.png'),
+            await this.gameEngine.assetLoader.loadTexture('assets/cena_3_galeria/bob_walk_4.png')
         ];
         this.backTextures = [
-            await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_back_1.png'),
-            await this.assetLoader.loadTexture('assets/cena_3_galeria/bob_back_2.png')
+            await this.gameEngine.assetLoader.loadTexture('assets/cena_3_galeria/bob_back_1.png'),
+            await this.gameEngine.assetLoader.loadTexture('assets/cena_3_galeria/bob_back_2.png')
         ];
     }
 
     public static async create(
-        startX: number,
-        startY: number,
-        speed: number,
-        leftBound: number,
-        rightBound: number,
-        soundManager: SoundManager,
-        assetLoader: AssetLoader
+gameEngine: GameEngine,
+        startX: number = 0,
+        startY: number = 0,
+        speed: number = 0.10,
+        leftBound: number = -5,
+        rightBound: number = 5
     ): Promise<BobCharacter> {
-        const character = new BobCharacter(startX, startY, speed, leftBound, rightBound, soundManager, assetLoader);
+        const character = new BobCharacter(startX, startY, speed, leftBound, rightBound, gameEngine);
         await character.loadTextures();
         return character;
     }
@@ -206,35 +187,33 @@ export class MartaCharacter extends WalkingCharacter {
     constructor(
         startX: number,
         startY: number,
-        speed: number = 0.10,
-        leftBound: number = -5,
-        rightBound: number = 5,
-        soundManager: SoundManager,
-        assetLoader: AssetLoader
+        speed: number,
+        leftBound: number,
+        rightBound: number,
+        gameEngine: GameEngine,
     ) {
-        super(startX, startY, speed, leftBound, rightBound, soundManager, 'female', assetLoader);
+        super(gameEngine, startX, startY, speed, leftBound, rightBound, 'female');
     }
 
     protected async loadTextures(): Promise<void> {
         this.walkTextures = [
-            await this.assetLoader.loadTexture('assets/cena_3_galeria/marta_walk_1.png'),
-            await this.assetLoader.loadTexture('assets/cena_3_galeria/marta_walk_2.png')
+            await this.gameEngine.assetLoader.loadTexture('assets/cena_3_galeria/marta_walk_1.png'),
+            await this.gameEngine.assetLoader.loadTexture('assets/cena_3_galeria/marta_walk_2.png')
         ];
         this.backTextures = [
-            await this.assetLoader.loadTexture('assets/cena_3_galeria/marta_back_1.png')
+            await this.gameEngine.assetLoader.loadTexture('assets/cena_3_galeria/marta_back_1.png')
         ];
     }
 
     public static async create(
-        startX: number,
-        startY: number,
-        speed: number,
-        leftBound: number,
-        rightBound: number,
-        soundManager: SoundManager,
-        assetLoader: AssetLoader
+        gameEngine: GameEngine,
+        startX: number = 0,
+        startY: number = 0,
+        speed: number = 0.10,
+        leftBound: number = -5,
+        rightBound: number = 5
     ): Promise<MartaCharacter> {
-        const character = new MartaCharacter(startX, startY, speed, leftBound, rightBound, soundManager, assetLoader);
+        const character = new MartaCharacter(startX, startY, speed, leftBound, rightBound, gameEngine);
         await character.loadTextures();
         return character;
     }

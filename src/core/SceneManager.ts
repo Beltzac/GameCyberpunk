@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import { Scene } from './Scene';
 import { GameEngine } from './GameEngine';
 import { GameState } from './GameState';
-import { AssetLoader } from '../utils/AssetLoader';
 import { Easing } from '../utils/Easing';
 
 function delay(ms: number) {
@@ -28,7 +27,7 @@ export class SceneManager {
     private glitchSoundLoaded: boolean = false;
     private lastGlitchSoundIndex: number = -1;
 
-    constructor(gameState: GameState, gameEngine: any) {
+    constructor(gameState: GameState, gameEngine: GameEngine) {
         this.scenes = new Map<string, Scene>();
         this._currentScene = null;
         this.gameEngine = gameEngine;

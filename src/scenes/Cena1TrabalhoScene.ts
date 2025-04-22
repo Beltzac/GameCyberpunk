@@ -180,7 +180,7 @@ export class Cena1TrabalhoScene extends Scene {
         this.performanceData['Coffee Steam Effect'] = performance.now() - coffeeSteamStartTime;
     }
 
-    render(renderer: THREE.WebGLRenderer): void {
+    render(): void {
         // Custom rendering if needed (currently none)
     }
 

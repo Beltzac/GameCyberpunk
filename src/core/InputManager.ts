@@ -163,7 +163,7 @@ export class InputManager {
 
             // Attempt to get Texture Name if available
             try {
-                const objectWithMaterial = firstIntersected as any;
+                const objectWithMaterial = firstIntersected as any; // eslint-disable-line @typescript-eslint/no-explicit-any
                 if (objectWithMaterial.material) {
                     const material = Array.isArray(objectWithMaterial.material) ? objectWithMaterial.material[0] : objectWithMaterial.material;
                     if (material && material.map && material.map.name) {
@@ -497,7 +497,7 @@ export class InputManager {
             // Alpha value is the 4th component (index 3), normalized to 0-1 range
             const alpha = pixelData[3] / 255;
             return alpha;
-        } catch (e) {
+        } catch {
             // Security errors can happen if the image is cross-origin and CORS isn't set up
             // console.warn(`Could not get pixel data for texture ${textureKey} at (${x}, ${y}). Check CORS policy if image is external.`, e); // Reduce noise
             return 1; // Assume opaque on error
@@ -507,7 +507,7 @@ export class InputManager {
     // --- Click Animation Logic ---
 
     // Update active animations
-    public update(deltaTime: number): void {
+    public update(): void {
         const now = performance.now() / 1000; // Current time in seconds
         const animationsToRemove: number[] = [];
         const currentScene = this.sceneManager.currentScene?.threeScene;
@@ -516,7 +516,7 @@ export class InputManager {
 
         this.activeClickAnimations.forEach((anim, index) => {
             const elapsedTime = now - anim.startTime;
-            let progress = Math.min(elapsedTime / anim.duration, 1); // Clamp progress to [0, 1]
+            const progress = Math.min(elapsedTime / anim.duration, 1); // Clamp progress to [0, 1]
 
             // Apply easing
             const easedProgress = anim.easingFunc(progress);

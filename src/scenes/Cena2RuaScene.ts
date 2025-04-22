@@ -320,7 +320,7 @@ export class Cena2RuaScene extends Scene {
         this.performanceData['Post Scrolling Animation'] = performance.now() - postScrollStartTime;
     }
 
-    render(renderer: THREE.WebGLRenderer): void {
+    render(): void {
         // Custom rendering if needed
     }
 
@@ -383,7 +383,6 @@ export class Cena2RuaScene extends Scene {
                 this.threeScene.add(this.postContainer); // Add container directly to the scene
 
                 this.postSprites = []; // Clear previous sprites if any
-                let accumulatedHeight = 0;
                 const postSpacing = 1.0; // Vertical space between posts
 
                 for (let i = 0; i < 1; i++) {
@@ -427,7 +426,6 @@ export class Cena2RuaScene extends Scene {
                     this.postSprites.push(postMesh); // Store mesh reference (cast no longer needed)
 
                     // Store height for scroll calculation (use scaleY as height proxy)
-                    accumulatedHeight += postScaleY + postSpacing;
                 }
                 this.currentPostIndex = 0; // Start at the first post
                 this.targetPostIndex = 0;
@@ -448,7 +446,7 @@ export class Cena2RuaScene extends Scene {
             console.log("Phone or Post clicked - starting scroll");
             if (this.postContainer) {
 
-                var messages = [
+                const messages = [
                     "Olá, tudo bem?",
                     "Como você está?",
                     "Espero que esteja tendo um bom dia!",
@@ -456,8 +454,8 @@ export class Cena2RuaScene extends Scene {
                     "O que você está fazendo agora?",
                 ];
 
-                var randomMessage = messages[Math.floor(Math.random() * messages.length)];
-                var randomMessagePosition = new THREE.Vector3(Math.random() * 16 - 8, Math.random() * 4 - 2, 3); // Random position in 3D space
+                const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+                const randomMessagePosition = new THREE.Vector3(Math.random() * 16 - 8, Math.random() * 4 - 2, 3); // Random position in 3D space
 
                 const messageSpritePapers = await this.gameEngine.uiManager.showMessage(randomMessage, 1000, randomMessagePosition); // Example 3D position
                 if (messageSpritePapers) {
